@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  /* Primary brand — cobalt/indigo referencing the Blue Pottery glaze. */
+  --color-brand-50: #EEF3F8;
+  --color-brand-100: #D3E1EC;
+  --color-brand-300: #7FA5C4;
+  --color-brand-500: #2F5C82;
+  --color-brand-700: #1E4B6E;
+  --color-brand-900: #122F45;
+
+  /* Warm, cool-leaning neutral paper base. */
+  --color-paper: #F7F5F0;
+  --color-paper-muted: #EFEBE3;
+
+  --color-ink: #1B1B18;
+  --color-ink-muted: #57544C;
+
+  /* Brass/ochre accent — wood-handicraft hardware reference. Used sparingly. */
+  --color-accent: #C08A3E;
+  --color-accent-dark: #9C6C2A;
+
+  /* Muted clay — reserved for small tags/badges only, never a primary CTA. */
+  --color-clay: #B0603F;
+
+  /* Trust/verification signal (certifications, "verified buyer" badges). */
+  --color-trust: #4A7C59;
+
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-body: var(--font-work-sans), system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-700);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

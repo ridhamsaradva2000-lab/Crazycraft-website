@@ -1,0 +1,23 @@
+-- 20260726090200_revoke_direct_inquiries_insert.sql
+--
+-- Module 2 granted anon/authenticated a direct, column-scoped INSERT on
+-- inquiries. At the time, that was a reasonable baseline (qualification
+--_stage/lead_score were still excluded from the grant, so a direct
+-- insert could only ever produce an unscored, Stage-1 row). Module 4
+-- changes the calculus: submit_inquiry() now provides Turnstile
+-- verification (at the application layer), rate limiting, duplicate
+-- detection, server-derived staging, and lead scoring — all of which a
+-- caller could simply skip by using the publishable key to insert
+-- directly instead, since that grant was never removed. Closing it here.
+--
+-- This does not touch RLS. The existing "public can submit inquiries"
+-- policy (Module 2) is left in place as inert defense in depth — with no
+-- INSERT grant at all, that policy is simply never reached, matching the
+-- same pattern already used elsewhere in this project (e.g. Module 2's
+-- "sales can update inquiries" policy, kept in place after its
+-- corresponding direct-update grant was removed).
+--
+-- submit_inquiry() is unaffected: it is SECURITY DEFINER and bypasses
+-- table-level grants entirely for its own internal INSERT.
+
+revoke insert on public.inquiries from anon, authenticated;
