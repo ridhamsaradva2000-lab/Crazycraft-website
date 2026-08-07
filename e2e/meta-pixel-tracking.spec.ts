@@ -20,7 +20,24 @@ test.describe("Meta Pixel — tracking behavior", () => {
     const page = await context.newPage();
     await page.goto(`${baseURL}/products`);
 
-    await page.getByRole("button", { name: "Accept marketing" }).click();
+    const consentDialog = page.getByRole("dialog", { name: "Get a Better Experience" });
+    await expect(consentDialog).toBeVisible({ timeout: 15_000 });
+    await consentDialog.getByRole("button", { name: "Accept Cookies" }).click();
+    await expect(consentDialog).toBeHidden();
+
+    const consentCookie = (await context.cookies(baseURL!)).find(
+      (cookie) => cookie.name === "crazycraft_consent"
+    );
+    expect(consentCookie).toBeDefined();
+    if (!consentCookie) throw new Error("Expected crazycraft_consent cookie after acceptance.");
+
+    const storedDecision = JSON.parse(decodeURIComponent(consentCookie.value)) as {
+      version?: unknown;
+      marketing?: unknown;
+    };
+    expect(storedDecision).toMatchObject({ version: 1, marketing: true });
+    expect(await page.evaluate(() => document.documentElement.style.overflow)).not.toBe("hidden");
+
     await waitStableCombined(
       metaGuard,
       (s) => isDeepStrictEqual(s.entries.map((e) => e.args), INITIAL_SEQUENCE) && s.scriptRequestCount === 1
@@ -372,7 +389,7 @@ test.describe("Meta Pixel — tracking behavior", () => {
     const page = await context.newPage();
     await page.goto(`${baseURL}/products`);
 
-    await expect(page.getByRole("region", { name: "Cookie consent" })).toBeHidden();
+    await expect(page.getByRole("dialog", { name: "Get a Better Experience" })).toBeHidden();
     const settled = await waitStableCombined(
       metaGuard,
       (s) => isDeepStrictEqual(s.entries.map((e) => e.args), INITIAL_SEQUENCE) && s.scriptRequestCount === 1

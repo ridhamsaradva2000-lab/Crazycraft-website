@@ -1,51 +1,101 @@
 "use client";
 
-import Link from "next/link";
-import type { Route } from "next";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { useConsent } from "@/lib/consent/ConsentProvider";
 
-/**
- * Renders nothing until after the shared provider's client-side cookie
- * check completes (hasChecked is false during SSR and the first client
- * render, so both agree — no hydration mismatch), and nothing once a
- * decision already exists. This component itself never calls fbq or
- * loads any script — it only records the visitor's choice via
- * ConsentProvider. Whether marketing measurement (Meta Pixel) actually
- * activates as a result is handled entirely by MetaPixel.tsx, gated on
- * this choice plus a configured Pixel ID.
- */
+const CONSENT_PROMPT_DELAY_MS = 10_000;
+
 export function ConsentBanner() {
   const { decision, hasChecked, setDecision } = useConsent();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    if (!hasChecked || decision !== null) return;
+
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const root = document.documentElement;
+    const previousOverflow = root.style.overflow;
+
+    const timer = window.setTimeout(() => {
+      if (dialog.open) return;
+
+      dialog.showModal();
+      root.style.overflow = "hidden";
+      dialog.focus();
+    }, CONSENT_PROMPT_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+
+      if (dialog.open) dialog.close();
+
+      root.style.overflow = previousOverflow;
+    };
+  }, [hasChecked, decision]);
 
   if (!hasChecked || decision !== null) return null;
 
   return (
-    <div
-      role="region"
-      aria-label="Cookie consent"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-paper-muted bg-white px-4 py-4 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] sm:px-6"
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="cookie-consent-title"
+      aria-describedby="cookie-consent-description cookie-consent-privacy cookie-consent-choice"
+      onCancel={(event) => event.preventDefault()}
+      tabIndex={-1}
+      className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl overflow-y-auto rounded-2xl border border-paper-muted bg-white p-0 text-ink shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-[1px]"
     >
-      <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="font-body text-sm text-ink-muted">
-          We&apos;d like your permission for marketing measurement (Meta Pixel), used to help
-          measure the effectiveness of our advertising. Marketing tracking is off by default and
-          only activates if you accept and a valid Meta Pixel ID is configured for this site.
-          Marketing tracking remains off while your current choice is Reject. See our{" "}
-          <Link href={"/privacy" as Route} className="underline hover:text-brand-700">
-            Privacy &amp; Cookies
-          </Link>{" "}
-          page for details or to change your choice later.
+      <div className="p-6 sm:p-8">
+        <h2
+          id="cookie-consent-title"
+          className="font-heading text-2xl font-semibold tracking-tight text-ink sm:text-3xl"
+        >
+          <span aria-hidden="true">{"\u{1F36A}"}</span> Get a Better Experience
+        </h2>
+
+        <p
+          id="cookie-consent-description"
+          className="mt-4 font-body text-sm leading-6 text-ink-muted sm:text-base"
+        >
+          Enable optional cookies to discover more relevant products and enjoy a more personalized
+          sourcing experience.
         </p>
-        <div className="flex shrink-0 gap-2">
-          <Button type="button" variant="outline" onClick={() => setDecision(false)}>
-            Reject non-essential
+
+        <p
+          id="cookie-consent-privacy"
+          className="mt-3 font-body text-sm leading-6 text-ink-muted sm:text-base"
+        >
+          We value your privacy. Your information is handled securely and is never sold.
+        </p>
+
+        <p
+          id="cookie-consent-choice"
+          className="mt-4 font-body text-sm font-medium italic text-ink"
+        >
+          Choose an option to continue.
+        </p>
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full sm:flex-1"
+            onClick={() => setDecision(false)}
+          >
+            Reject Non-Essential Cookies
           </Button>
-          <Button type="button" variant="outline" onClick={() => setDecision(true)}>
-            Accept marketing
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full sm:flex-1"
+            onClick={() => setDecision(true)}
+          >
+            Accept Cookies
           </Button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }
