@@ -16,7 +16,10 @@
     "supabase:stop": "npx supabase stop",
     "supabase:reset": "npx supabase db reset",
     "supabase:lint": "npx supabase db lint --schema public,private --level error",
-    "supabase:test": "npx supabase test db"
+    "supabase:test": "npx supabase test db",
+    "test:e2e:gate": "playwright test --config=e2e/playwright.gate.config.ts",
+    "test:e2e:tracking": "playwright test --config=e2e/playwright.tracking.config.ts",
+    "test:e2e": "npm run test:e2e:gate && npm run test:e2e:tracking"
   },
   "dependencies": {
     "@hookform/resolvers": "5.4.2",
@@ -36,6 +39,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
     "@tailwindcss/postcss": "4.3.3",
     "@types/country-list": "^2.1.4",
     "@types/node": "24.13.3",
