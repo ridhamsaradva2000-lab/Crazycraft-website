@@ -2,19 +2,17 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Every read in this file relies entirely on the ordinary, anon-safe
- * Supabase client and existing RLS — never a service-role/secret-key
- * client. RLS already does the "published only" filtering for us:
- *   - "public can view published products" (products.status = 'published')
- *   - "public can view images of published products" /
- *     "public can view variants of published products" (both scoped via
- *     an EXISTS check against products.status, so a draft product's
- *     images/variants can never leak through these related tables either)
- *   - categories/collections/product_collections have no draft concept
- *     at all and are fully public
- * This file's job is purely to shape queries well (exact columns,
- * pagination, safe search) — the actual security boundary is RLS,
- * already verified in Module 2's own test suite.
+ * Every public catalog read in this file uses the ordinary Supabase server
+ * client; no service-role client is used.
+ *
+ * Module 8 Stage 3 makes RLS authoritative for catalog visibility:
+ *   - categories must be effectively active, including parent visibility
+ *   - products must be published and belong to an effectively active category
+ *   - product_images, product_variants, and product_collections inherit the
+ *     visible-product boundary through their products-based SELECT policies
+ *
+ * This file shapes queries, pagination, search, and response data only. It does
+ * not duplicate the database visibility rules with application-side filters.
  */
 
 export const PAGE_SIZE = 12;
@@ -398,13 +396,10 @@ export interface ProductDetailResult {
 }
 
 /**
- * Returns { product: null, error: false } for a genuinely-absent or
- * unpublished slug — the caller should render notFound() for that case,
- * never a generic error. RLS already makes an unpublished product
- * invisible to this query entirely, so "not found" and "exists but
- * unpublished" are indistinguishable here by design — exactly the
- * desired behavior (a buyer must never be able to tell a hidden draft
- * from a nonexistent slug).
+ * Returns { product: null, error: false } when the slug is genuinely absent,
+ * unpublished, or hidden because its category (or parent category) is not
+ * effectively active. RLS deliberately makes those states indistinguishable
+ * to a public caller, so the page can treat all of them as "not found."
  */
 export async function getProductBySlug(slug: string): Promise<ProductDetailResult> {
   const supabase = await createClient();

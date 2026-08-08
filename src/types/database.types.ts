@@ -1472,10 +1472,6 @@ export type Database = {
         Args: { p_buyer_id: string; p_verified: boolean }
         Returns: undefined
       }
-      is_category_effectively_active: {
-        Args: { p_category_id: string }
-        Returns: boolean
-      }
       list_crm_assignment_admins: {
         Args: never
         Returns: {
