@@ -47,8 +47,14 @@ test.describe("Meta Pixel gate - closed states", () => {
       true
     );
 
-    await page.keyboard.press("Escape");
-    await expect(consentDialog).toBeVisible();
+    await expect(consentDialog).toHaveAttribute("closedby", "none");
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await page.keyboard.press("Escape");
+      await expect(consentDialog).toBeVisible();
+      expect(await consentDialog.evaluate((dialog) => dialog.matches(":modal"))).toBe(true);
+      expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe("hidden");
+    }
 
     await page.mouse.click(2, 2);
     await expect(consentDialog).toBeVisible();

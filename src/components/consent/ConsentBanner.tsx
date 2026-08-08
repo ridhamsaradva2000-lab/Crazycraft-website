@@ -16,6 +16,17 @@ export function ConsentBanner() {
     const dialog = dialogRef.current;
     if (!dialog) return;
 
+    // Native close-request hardening. `closedby="none"` prevents browser
+    // light-dismiss / Escape close behavior where supported, while the
+    // native cancel listener is the compatibility fallback.
+    dialog.setAttribute("closedby", "none");
+
+    const preventCancel = (event: Event) => {
+      event.preventDefault();
+    };
+
+    dialog.addEventListener("cancel", preventCancel);
+
     const root = document.documentElement;
     const previousOverflow = root.style.overflow;
 
@@ -29,6 +40,7 @@ export function ConsentBanner() {
 
     return () => {
       window.clearTimeout(timer);
+      dialog.removeEventListener("cancel", preventCancel);
 
       if (dialog.open) dialog.close();
 
