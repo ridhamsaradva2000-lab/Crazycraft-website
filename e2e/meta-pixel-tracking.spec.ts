@@ -380,6 +380,73 @@ test.describe("Meta Pixel — tracking behavior", () => {
     expect(metaGuard.unexpectedMetaAttempts).toEqual([]);
   });
 
+  test("Lead conversion helper: sends one deduplicated Lead with explicit eventID after accepted consent", async ({
+    context,
+    metaGuard,
+    baseURL,
+  }) => {
+    await setConsentCookie(context, baseURL!, true);
+    const page = await context.newPage();
+    await page.goto(`${baseURL}/products`);
+
+    const initial = await waitStableCombined(
+      metaGuard,
+      (s) => isDeepStrictEqual(s.entries.map((e) => e.args), INITIAL_SEQUENCE) && s.scriptRequestCount === 1
+    );
+
+    const eventId = "11111111-1111-4111-8111-111111111111";
+    const accepted = await page.evaluate((id) => {
+      const tracker = (
+        window as unknown as { __crazycraftTrackMetaLead?: (eventId: string) => boolean }
+      ).__crazycraftTrackMetaLead;
+      return tracker?.(id) ?? false;
+    }, eventId);
+
+    expect(accepted).toBe(true);
+
+    const afterLead = await waitStableCombined(metaGuard, (s) => {
+      const added = s.entries.slice(initial.entries.length);
+      return (
+        added.length === 1 &&
+        isDeepStrictEqual(added[0]?.args, ["track", "Lead", {}, { eventID: eventId }]) &&
+        s.scriptRequestCount === 1
+      );
+    });
+
+    const duplicateAccepted = await page.evaluate((id) => {
+      const tracker = (
+        window as unknown as { __crazycraftTrackMetaLead?: (eventId: string) => boolean }
+      ).__crazycraftTrackMetaLead;
+      return tracker?.(id) ?? false;
+    }, eventId);
+
+    expect(duplicateAccepted).toBe(true);
+    await waitStableCombined(
+      metaGuard,
+      (s) => s.entries.length === afterLead.entries.length && s.scriptRequestCount === 1
+    );
+  });
+
+  test("Lead conversion helper: rejected consent cannot queue or send a Lead", async ({
+    context,
+    metaGuard,
+    baseURL,
+  }) => {
+    await setConsentCookie(context, baseURL!, false);
+    const page = await context.newPage();
+    await page.goto(`${baseURL}/products`);
+
+    const accepted = await page.evaluate(() => {
+      const tracker = (
+        window as unknown as { __crazycraftTrackMetaLead?: (eventId: string) => boolean }
+      ).__crazycraftTrackMetaLead;
+      return tracker?.("22222222-2222-4222-8222-222222222222") ?? false;
+    });
+
+    expect(accepted).toBe(false);
+    await waitStableCombined(metaGuard, (s) => s.entries.length === 0 && s.scriptRequestCount === 0);
+  });
+
   test("accepted-cookie cold load: sequence and script request stabilize together, exactly once", async ({
     context,
     metaGuard,

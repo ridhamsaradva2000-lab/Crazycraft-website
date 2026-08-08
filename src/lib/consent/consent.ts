@@ -8,11 +8,10 @@
  * re-prompted.
  *
  * The single non-essential category is `marketing` — this model exists
- * specifically to gate ad-measurement (Meta Pixel, mounted in
- * MetaPixel.tsx and gated on this choice plus a configured Pixel ID),
- * not generic anonymous analytics. A server-side Conversions API relay
- * remains unimplemented as of this comment; this model does not
- * describe or depend on one existing.
+ * specifically to gate ad-measurement (Meta Pixel plus the server-side
+ * Meta Conversions API Lead relay), not generic anonymous analytics.
+ * Missing, malformed, rejected, or version-mismatched consent keeps both
+ * browser conversion tracking and CAPI enqueueing closed.
  */
 
 export const CONSENT_VERSION = 1;
@@ -21,7 +20,7 @@ export const CONSENT_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365; // 365 days
 
 export interface ConsentDecision {
   version: number;
-  /** Marketing/ad-measurement cookies — e.g. Meta Pixel/CAPI, once built. */
+  /** Marketing/ad-measurement cookies — Meta Pixel + Meta CAPI. */
   marketing: boolean;
   /** Canonical UTC ISO string, exactly as produced by Date#toISOString(). */
   decidedAt: string;

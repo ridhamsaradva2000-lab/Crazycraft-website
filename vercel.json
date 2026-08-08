@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/internal/meta-capi",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}

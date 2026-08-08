@@ -34,7 +34,22 @@ import { z } from "zod";
 const serverEnvSchema = z.object({
   TURNSTILE_SECRET_KEY: z.string().min(1),
   SUPABASE_SECRET_KEY: z.string().min(1),
-  META_CONVERSIONS_API_TOKEN: z.string().min(1).optional(),
+  META_CONVERSIONS_API_TOKEN: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(1).optional()
+  ),
+  META_GRAPH_API_VERSION: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().regex(/^v\d+\.\d+$/).default("v25.0")
+  ),
+  META_TEST_EVENT_CODE: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(1).optional()
+  ),
+  CRON_SECRET: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().min(16).optional()
+  ),
   // Blank ("") is normalized to undefined before validation — an
   // explicitly-blank TRUSTED_CLIENT_IP_HEADER= line (exactly what
   // .env.local.example documents, intentionally left unset) is an empty
@@ -50,6 +65,9 @@ const parsed = serverEnvSchema.safeParse({
   TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
   SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
   META_CONVERSIONS_API_TOKEN: process.env.META_CONVERSIONS_API_TOKEN,
+  META_GRAPH_API_VERSION: process.env.META_GRAPH_API_VERSION,
+  META_TEST_EVENT_CODE: process.env.META_TEST_EVENT_CODE,
+  CRON_SECRET: process.env.CRON_SECRET,
   TRUSTED_CLIENT_IP_HEADER: process.env.TRUSTED_CLIENT_IP_HEADER,
 });
 

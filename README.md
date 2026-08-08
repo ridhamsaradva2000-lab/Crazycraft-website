@@ -719,9 +719,12 @@ each is validated at startup via `env.client.ts`/`env.server.ts`):
     `submit_inquiry()` in `20260726090100_create_submit_inquiry_rpc.sql`)
     remain fully active regardless, and neither depends on this variable.
 
-`NEXT_PUBLIC_META_PIXEL_ID` and `META_CONVERSIONS_API_TOKEN` remain
-documented in `.env.local.example` as commented placeholders for Module 7
-— do not set them yet.
+Module 7 implements consent-gated Meta Pixel PageView/Lead tracking
+plus a server-side Meta Conversions API Lead outbox and recovery worker.
+Production requires `NEXT_PUBLIC_META_PIXEL_ID`,
+`META_CONVERSIONS_API_TOKEN`, and `CRON_SECRET`; optional
+`META_TEST_EVENT_CODE` is only for Meta Events Manager testing.
+`META_GRAPH_API_VERSION` defaults server-side to `v25.0`.
 
 ## Architecture Notes (Module 1 Scope)
 

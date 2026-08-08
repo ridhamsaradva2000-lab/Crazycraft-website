@@ -221,7 +221,9 @@ export type Database = {
           id: string
           inquiry_id: string | null
           last_error: string | null
+          next_attempt_at: string
           payload: Json
+          processing_started_at: string | null
           quote_request_id: string | null
           sample_id: string | null
           sent_at: string | null
@@ -235,7 +237,9 @@ export type Database = {
           id?: string
           inquiry_id?: string | null
           last_error?: string | null
+          next_attempt_at?: string
           payload: Json
+          processing_started_at?: string | null
           quote_request_id?: string | null
           sample_id?: string | null
           sent_at?: string | null
@@ -249,7 +253,9 @@ export type Database = {
           id?: string
           inquiry_id?: string | null
           last_error?: string | null
+          next_attempt_at?: string
           payload?: Json
+          processing_started_at?: string | null
           quote_request_id?: string | null
           sample_id?: string | null
           sent_at?: string | null

@@ -1,6 +1,8 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { after } from "next/server";
+import { randomUUID } from "node:crypto";
 import { isIP } from "node:net";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -8,12 +10,16 @@ import { verifyTurnstileToken } from "@/lib/turnstile";
 import { clientEnv } from "@/lib/env.client";
 import { serverEnv } from "@/lib/env.server";
 import { inquiryFormSchema, type InquiryFormInput } from "@/lib/validations/inquiry";
+import { CONSENT_COOKIE_NAME, parseConsentCookie } from "@/lib/consent/consent";
+import { isValidMetaPixelId } from "@/lib/meta/pixel-config";
+import { deliverPendingCapiEvents } from "@/lib/meta/capi";
 import type { Database } from "@/types/database.types";
 
 export interface SubmitInquiryResult {
   error: string | null;
   fieldErrors?: Record<string, string>;
   success?: boolean;
+  metaEventId?: string;
 }
 
 /**
@@ -261,7 +267,17 @@ export async function submitInquiryAction(input: InquiryFormInput): Promise<Subm
   // publishable-key caller could never provide, which is why this call
   // uses the privileged admin client rather than the ordinary
   // cookie-scoped one.
+  const consentStore = await cookies();
+  const consentDecision = parseConsentCookie(consentStore.get(CONSENT_COOKIE_NAME)?.value);
+  const trustedMetaEventId =
+    consentDecision?.marketing === true &&
+    isValidMetaPixelId(clientEnv.NEXT_PUBLIC_META_PIXEL_ID)
+      ? randomUUID()
+      : null;
+
   const adminClient = createAdminClient();
+
+  // Checked against SubmitInquiryRpcArgs
 
   // Checked against SubmitInquiryRpcArgs — the precise compatibility type
   // above — not the raw generated type. This is what actually catches a
@@ -299,9 +315,9 @@ export async function submitInquiryAction(input: InquiryFormInput): Promise<Subm
     p_last_touch_source: data.lastTouchSource || null,
     p_last_touch_medium: data.lastTouchMedium || null,
     p_last_touch_campaign: data.lastTouchCampaign || null,
-    p_fbp: data.fbp || null,
-    p_fbc: data.fbc || null,
-    p_event_id: data.eventId ?? null,
+    p_fbp: trustedMetaEventId ? data.fbp || null : null,
+    p_fbc: trustedMetaEventId ? data.fbc || null : null,
+    p_event_id: trustedMetaEventId,
     // Already handled above (the early return on a filled honeypot) —
     // this is never forwarded as actually filled. "" rather than null
     // specifically because p_honeypot is not in the nullable set above;
@@ -351,7 +367,24 @@ export async function submitInquiryAction(input: InquiryFormInput): Promise<Subm
   switch (rpcResult.status) {
     case "accepted":
     case "duplicate":
-      return { error: null, success: true };
+      if (trustedMetaEventId) {
+        after(async () => {
+          try {
+            await deliverPendingCapiEvents({ limit: 5 });
+          } catch (deliveryError) {
+            console.error(
+              "Post-response Meta CAPI delivery failed:",
+              deliveryError instanceof Error ? deliveryError.message : "unknown_error"
+            );
+          }
+        });
+      }
+
+      return {
+        error: null,
+        success: true,
+        metaEventId: trustedMetaEventId ?? undefined,
+      };
     case "rate_limited":
       return {
         error: "You've submitted a few times recently — please wait a few minutes and try again.",

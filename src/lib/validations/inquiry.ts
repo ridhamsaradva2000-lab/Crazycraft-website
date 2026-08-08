@@ -127,7 +127,6 @@ export const inquiryFormSchema = inquiryStage1Schema
     lastTouchCampaign: z.string().trim().max(255).optional(),
     fbp: z.string().trim().max(255).optional(),
     fbc: z.string().trim().max(255).optional(),
-    eventId: z.string().uuid().optional(),
   });
 export type InquiryFormInput = z.infer<typeof inquiryFormSchema>;
 

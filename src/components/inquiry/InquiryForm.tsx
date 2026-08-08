@@ -14,6 +14,9 @@ import {
 } from "@/lib/validations/inquiry";
 import { submitInquiryAction } from "@/lib/inquiries/actions";
 import { clientEnv } from "@/lib/env.client";
+import { useConsent } from "@/lib/consent/ConsentProvider";
+import { isValidMetaPixelId } from "@/lib/meta/pixel-config";
+import { trackMetaLead } from "@/components/consent/MetaPixel";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
@@ -22,6 +25,23 @@ import { FieldError, FormError, FormSuccess } from "@/components/ui/FormError";
 import { TurnstileWidget, type TurnstileWidgetHandle } from "@/components/inquiry/TurnstileWidget";
 import { getNames } from "country-list";
 const COUNTRY_NAMES = getNames();
+
+function readBrowserCookie(name: string): string | undefined {
+  const prefix = `${name}=`;
+  const item = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix));
+
+  if (!item) return undefined;
+
+  const raw = item.slice(prefix.length);
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
 const STAGE_1_FIELDS = ["name", "email", "country", "businessType", "message"] as const;
 const STAGE_2_FIELDS = [
   "companyName",
@@ -40,6 +60,7 @@ export function InquiryForm({
   productName?: string;
 }) {
   const searchParams = useSearchParams();
+  const { decision, hasChecked } = useConsent();
   const [stage, setStage] = useState<1 | 2 | 3>(1);
   const [isCountryOpen, setIsCountryOpen] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
@@ -133,6 +154,14 @@ const filteredCountries =
     const referrer =
       typeof document !== "undefined" && document.referrer ? document.referrer : undefined;
 
+    const marketingTrackingEnabled =
+      hasChecked &&
+      decision?.marketing === true &&
+      isValidMetaPixelId(clientEnv.NEXT_PUBLIC_META_PIXEL_ID);
+
+    const fbp = marketingTrackingEnabled ? readBrowserCookie("_fbp") : undefined;
+    const fbc = marketingTrackingEnabled ? readBrowserCookie("_fbc") : undefined;
+
     startTransition(async () => {
       const result = await submitInquiryAction({
         ...values,
@@ -154,6 +183,8 @@ const filteredCountries =
         lastTouchSource: utmSource,
         lastTouchMedium: utmMedium,
         lastTouchCampaign: utmCampaign,
+        fbp,
+        fbc,
       });
 
       if (result.error) {
@@ -172,6 +203,10 @@ const filteredCountries =
         setTurnstileToken(null);
         form.setValue("turnstileToken", "", { shouldValidate: true });
         return;
+      }
+
+      if (result.metaEventId) {
+        trackMetaLead(result.metaEventId);
       }
 
       setIsSuccess(true);
