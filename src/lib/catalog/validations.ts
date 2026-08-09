@@ -61,3 +61,57 @@ export const catalogSlugSchema = z
   .min(1)
   .max(200)
   .regex(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+
+
+// ============================================================================
+// Module 8 Stage 4 — Category Server Action validation schemas.
+// catalogSlugSchema is reused exactly as-is for category slugs below; no
+// new slug regex/schema is defined here.
+// ============================================================================
+
+export const categoryIdSchema = z
+  .string()
+  .uuid("Invalid category id.");
+
+export const categoryNameSchema = z
+  .string()
+  .trim()
+  .min(1, "Category name is required.")
+  .max(200, "Category name must be 200 characters or fewer.");
+
+export const parentIdSchema = z
+  .string()
+  .uuid("Invalid parent category.")
+  .nullable();
+
+export const createCategorySchema = z.object({
+  name: categoryNameSchema,
+  slug: catalogSlugSchema,
+  parentId: parentIdSchema,
+  isActive: z.boolean().optional().default(true),
+});
+
+// Raw, untrusted action-input boundary: isActive genuinely optional here.
+export type CreateCategoryActionInput = z.input<typeof createCategorySchema>;
+
+export const updateCategorySchema = z.object({
+  categoryId: categoryIdSchema,
+  name: categoryNameSchema,
+  slug: catalogSlugSchema,
+  parentId: parentIdSchema,
+});
+
+export type UpdateCategoryActionInput = z.input<typeof updateCategorySchema>;
+
+export const setCategoryActiveSchema = z.object({
+  categoryId: categoryIdSchema,
+  isActive: z.boolean(),
+});
+
+export type SetCategoryActiveActionInput = z.input<typeof setCategoryActiveSchema>;
+
+export const deleteCategorySchema = z.object({
+  categoryId: categoryIdSchema,
+});
+
+export type DeleteCategoryActionInput = z.input<typeof deleteCategorySchema>;
