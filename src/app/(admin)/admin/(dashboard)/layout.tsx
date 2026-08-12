@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route } from "next";
 import { redirect } from "next/navigation";
 import { Container } from "@/components/ui/Container";
 import { SignOutButton } from "@/components/auth/SignOutButton";
@@ -36,6 +37,12 @@ export default async function AdminDashboardLayout({
             </Link>
             <Link href="/admin/samples" className="font-body text-sm text-white/80 hover:text-white">
               Samples
+            </Link>
+            <Link
+              href={"/admin/catalog/categories" as Route}
+              className="font-body text-sm text-white/80 hover:text-white"
+            >
+              Categories
             </Link>
           </nav>
           <div className="flex items-center gap-4">

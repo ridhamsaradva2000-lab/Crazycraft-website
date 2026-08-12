@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route } from "next";
 import { Container } from "@/components/ui/Container";
 import { getAdminProfile } from "@/lib/auth/session";
 
@@ -33,12 +34,15 @@ export default async function AdminHomePage() {
             Sample requests — fulfillment status, payment, and shipping.
           </p>
         </Link>
-        <div className="rounded-lg border border-paper-muted bg-white p-6">
-          <h2 className="font-display text-lg text-brand-900">Catalog</h2>
+        <Link
+          href={"/admin/catalog/categories" as Route}
+          className="rounded-lg border border-paper-muted bg-white p-6 transition-colors hover:border-brand-700"
+        >
+          <h2 className="font-display text-lg text-brand-900">Categories</h2>
           <p className="mt-1 font-body text-sm text-ink-muted">
-            Products, categories, and media will be managed here.
+            Manage Main Categories and Subcategories.
           </p>
-        </div>
+        </Link>
         <div className="rounded-lg border border-paper-muted bg-white p-6">
           <h2 className="font-display text-lg text-brand-900">Settings</h2>
           <p className="mt-1 font-body text-sm text-ink-muted">
