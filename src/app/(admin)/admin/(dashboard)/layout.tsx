@@ -44,6 +44,12 @@ export default async function AdminDashboardLayout({
             >
               Categories
             </Link>
+            <Link
+              href={"/admin/catalog/products" as Route}
+              className="font-body text-sm text-white/80 hover:text-white"
+            >
+              Products
+            </Link>
           </nav>
           <div className="flex items-center gap-4">
             <span className="font-body text-sm text-white/60">

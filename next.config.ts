@@ -19,6 +19,10 @@ const nextConfig: NextConfig = {
   typedRoutes: true,
 
   images: {
+    // Local Supabase uses 127.0.0.1 in development. Next.js image
+    // optimization blocks private/local IPs by default, so permit them
+    // only during local development. Production remains protected.
+    dangerouslyAllowLocalIP: process.env.NODE_ENV === "development",
   remotePatterns: [
     ...(supabaseUrl && supabaseProtocol
       ? [
