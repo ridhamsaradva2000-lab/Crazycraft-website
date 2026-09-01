@@ -39,7 +39,7 @@ export async function generateMetadata({
   const { product, error } = await loadProduct(slug);
 
   if (error) {
-    return { title: "Temporarily Unavailable" };
+    return { title: "Temporarily Unavailable", robots: { index: false, follow: false } };
   }
 
   if (!product) {

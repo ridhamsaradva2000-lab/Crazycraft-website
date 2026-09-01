@@ -36,7 +36,7 @@ export async function generateMetadata({
   const { slug } = await params;
   const { collection, error } = await loadCollection(slug);
 
-  if (error) return { title: "Temporarily Unavailable" };
+  if (error) return { title: "Temporarily Unavailable", robots: { index: false, follow: false } };
   if (!collection) return { title: "Collection Not Found" };
 
   const title = `${collection.name} Collection`;
@@ -75,6 +75,10 @@ export default async function CollectionDetailPage({
 
   const result = await getProducts({ collectionSlug: collection.slug, page });
   const totalPages = Math.max(1, Math.ceil(result.totalCount / PAGE_SIZE));
+
+  if (!result.error && page > 1 && page > totalPages) {
+    notFound();
+  }
 
   return (
     <Container className="py-16">

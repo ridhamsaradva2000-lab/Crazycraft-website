@@ -36,7 +36,7 @@ export async function generateMetadata({
   const { slug } = await params;
   const { category, error } = await loadCategory(slug);
 
-  if (error) return { title: "Temporarily Unavailable" };
+  if (error) return { title: "Temporarily Unavailable", robots: { index: false, follow: false } };
   if (!category) return { title: "Category Not Found" };
 
   const title = `${category.name} Export Catalogue`;
@@ -75,6 +75,10 @@ export default async function CategoryDetailPage({
 
   const result = await getProducts({ categorySlug: category.slug, page });
   const totalPages = Math.max(1, Math.ceil(result.totalCount / PAGE_SIZE));
+
+  if (!result.error && page > 1 && page > totalPages) {
+    notFound();
+  }
 
   return (
     <Container className="py-16">

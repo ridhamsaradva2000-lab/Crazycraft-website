@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Container } from "@/components/ui/Container";
 import { ProductGrid } from "@/components/catalog/ProductGrid";
 import { ProductFilters } from "@/components/catalog/ProductFilters";
@@ -24,12 +25,16 @@ export async function generateMetadata({
   }
   const query = canonicalParams.toString();
   const canonical = `${clientEnv.NEXT_PUBLIC_SITE_URL}/products${query ? `?${query}` : ""}`;
+  const isFilteredOrSearch = parsed.success
+    ? Boolean(parsed.data.q || parsed.data.category || parsed.data.collection)
+    : true;
 
   return {
     title: "Handicraft Products for Export",
     description:
       "Browse Crazycraft's B2B handicraft export catalogue — Blue Pottery, wooden handicrafts, tote bags, bedding sets, and home decor, available for bulk and private-label orders.",
     alternates: { canonical },
+    ...(isFilteredOrSearch ? { robots: { index: false, follow: true } } : {}),
   };
 }
 
@@ -82,6 +87,10 @@ export default async function ProductsPage({
   });
 
   const totalPages = Math.max(1, Math.ceil(result.totalCount / PAGE_SIZE));
+
+  if (!result.error && page > 1 && page > totalPages) {
+    notFound();
+  }
 
   return (
     <Container className="py-16">

@@ -4,11 +4,15 @@ import { Container } from "@/components/ui/Container";
 import { InquiryForm } from "@/components/inquiry/InquiryForm";
 import { getProductBySlug } from "@/lib/catalog/data";
 import { catalogSlugSchema } from "@/lib/catalog/validations";
+import { clientEnv } from "@/lib/env.client";
 
 export const metadata: Metadata = {
   title: "Contact Us",
   description:
     "Get in touch with Crazycraft's export team — importers, wholesalers, retail chains, distributors, interior designers, and hotel buyers welcome.",
+  alternates: {
+    canonical: `${clientEnv.NEXT_PUBLIC_SITE_URL}/contact`,
+  },
 };
 
 export default async function ContactPage({
