@@ -1,5 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { createSitemapClient } from "@/lib/supabase/sitemap";
+import { catalogSlugSchema } from "@/lib/catalog/validations";
 
 /**
  * Every public catalog read in this file uses the ordinary Supabase server
@@ -563,4 +565,189 @@ export async function getFeaturedProducts(limit = 4): Promise<RelatedProductsRes
     }),
     error: imagesError,
   };
+}
+
+// ============================================================================
+// Module 9 Stage 3 -- Sitemap-only retrieval helpers. Additive only; no
+// existing exported function above this point is modified. These use
+// createSitemapClient() (anonymous, cookie-free, session-free, publishable
+// key only) rather than the ordinary session-bearing createClient() used
+// elsewhere in this file, so sitemap generation always reflects public
+// anonymous RLS visibility regardless of who or what requested it.
+// ============================================================================
+
+export interface SitemapEntityResult {
+  slugs: string[];
+  error: boolean;
+}
+
+const SITEMAP_BATCH_SIZE = 1000;
+const SITEMAP_RETRIEVAL_CEILING = 55000;
+
+interface SitemapPageResult {
+  data: { id: string; slug: string }[] | null;
+  error: { code?: string } | null;
+}
+
+interface SitemapCountResult {
+  count: number | null;
+  error: { code?: string } | null;
+}
+
+/**
+ * Completeness-safe slug collector shared by all three sitemap retrieval
+ * functions below. A short/undersized page is NOT trusted as proof of
+ * completion -- PostgREST/Supabase may enforce a server-side max-row
+ * limit lower than the requested .range() size, which would make a
+ * short-page check falsely report completion while silently skipping
+ * rows. Instead, completeness is proven by first obtaining an EXACT row
+ * count for the exact same public query/filter (via Supabase's
+ * { count: "exact", head: true }, which goes through the same RLS-scoped
+ * query as the row-level select), then paginating with the NEXT offset
+ * always equal to the number of rows ACTUALLY scanned so far (never
+ * iteration * batchSize), continuing until the scanned total exactly
+ * equals the expected count. An empty page returned before that total is
+ * reached, or a scanned total that ever exceeds the expected count
+ * (both of which indicate a completeness or concurrency inconsistency),
+ * are treated as retrieval failures -- never silently accepted. Each
+ * page is ordered by the row's primary key id (a provably unique total
+ * order, unlike slug, whose uniqueness is not independently verified
+ * here), so repeated .range() calls partition the result set
+ * deterministically; id is pagination metadata only and is never
+ * included in any emitted sitemap URL. Every candidate slug is
+ * validated with the existing catalogSlugSchema (no second slug rule is
+ * defined) before being accepted; an invalid slug is skipped -- never
+ * fabricated or corrected -- and only a safe, non-sensitive diagnostic
+ * is logged. Validated slugs are deduplicated (via Set) and returned in
+ * a deterministic sort order.
+ */
+async function collectSitemapSlugsInBatches(
+  label: string,
+  getCount: () => Promise<SitemapCountResult>,
+  fetchPage: (from: number, to: number) => Promise<SitemapPageResult>
+): Promise<SitemapEntityResult> {
+  const { count: expectedCount, error: countError } = await getCount();
+
+  if (countError || expectedCount === null || expectedCount === undefined) {
+    console.error(`[sitemap] ${label} count retrieval failed:`, countError?.code ?? "null_count");
+    return { slugs: [], error: true };
+  }
+
+  if (expectedCount > SITEMAP_RETRIEVAL_CEILING) {
+    console.error(`[sitemap] ${label} expected count exceeds the defensive retrieval ceiling.`);
+    return { slugs: [], error: true };
+  }
+
+  if (expectedCount === 0) {
+    return { slugs: [], error: false };
+  }
+
+  const validatedSlugs = new Set<string>();
+  let totalScanned = 0;
+
+  while (totalScanned < expectedCount) {
+    const from = totalScanned;
+    const to = from + SITEMAP_BATCH_SIZE - 1;
+    const { data, error } = await fetchPage(from, to);
+
+    if (error) {
+      console.error(`[sitemap] ${label} batch retrieval failed:`, error.code ?? "unknown");
+      return { slugs: [], error: true };
+    }
+
+    const rows = data ?? [];
+
+    if (rows.length === 0) {
+      console.error(`[sitemap] ${label} returned an empty page before reaching the expected count -- treating as a completeness failure.`);
+      return { slugs: [], error: true };
+    }
+
+    totalScanned += rows.length;
+
+    if (totalScanned > expectedCount) {
+      console.error(`[sitemap] ${label} scanned more rows than the expected count -- treating as a concurrency/consistency failure.`);
+      return { slugs: [], error: true };
+    }
+
+    for (const row of rows) {
+      const parsedSlug = catalogSlugSchema.safeParse(row.slug);
+      if (!parsedSlug.success) {
+        console.error(`[sitemap] ${label} skipped a row with an invalid slug.`);
+        continue;
+      }
+      validatedSlugs.add(parsedSlug.data);
+    }
+  }
+
+  if (totalScanned !== expectedCount) {
+    console.error(`[sitemap] ${label} final scanned count did not equal the expected count -- treating as a completeness failure.`);
+    return { slugs: [], error: true };
+  }
+
+  return { slugs: Array.from(validatedSlugs).sort(), error: false };
+}
+
+export async function getSitemapProducts(): Promise<SitemapEntityResult> {
+  const supabase = createSitemapClient();
+  return collectSitemapSlugsInBatches(
+    "products",
+    async () => {
+      const { count, error } = await supabase
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "published");
+      return { count, error };
+    },
+    async (from, to) => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, slug")
+        .eq("status", "published")
+        .order("id", { ascending: true })
+        .range(from, to);
+      return { data, error };
+    }
+  );
+}
+
+export async function getSitemapCategories(): Promise<SitemapEntityResult> {
+  const supabase = createSitemapClient();
+  return collectSitemapSlugsInBatches(
+    "categories",
+    async () => {
+      const { count, error } = await supabase
+        .from("categories")
+        .select("id", { count: "exact", head: true });
+      return { count, error };
+    },
+    async (from, to) => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id, slug")
+        .order("id", { ascending: true })
+        .range(from, to);
+      return { data, error };
+    }
+  );
+}
+
+export async function getSitemapCollections(): Promise<SitemapEntityResult> {
+  const supabase = createSitemapClient();
+  return collectSitemapSlugsInBatches(
+    "collections",
+    async () => {
+      const { count, error } = await supabase
+        .from("collections")
+        .select("id", { count: "exact", head: true });
+      return { count, error };
+    },
+    async (from, to) => {
+      const { data, error } = await supabase
+        .from("collections")
+        .select("id, slug")
+        .order("id", { ascending: true })
+        .range(from, to);
+      return { data, error };
+    }
+  );
 }
