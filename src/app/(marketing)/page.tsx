@@ -7,7 +7,7 @@ import { ProductCard } from "@/components/catalog/ProductCard";
 import { getPublishedCategories, getFeaturedProducts } from "@/lib/catalog/data";
 import { safeJsonLd } from "@/lib/seo/jsonLd";
 import { clientEnv } from "@/lib/env.client";
-import { SITE_DESCRIPTION } from "@/lib/constants";
+import { SITE_NAME, SITE_DESCRIPTION } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: { absolute: "Crazycraft | B2B Handicraft Exporter from India" },
@@ -54,10 +54,18 @@ export default async function HomePage() {
     description: SITE_DESCRIPTION,
   };
 
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    url: clientEnv.NEXT_PUBLIC_SITE_URL,
+  };
+
   return (
     <>
       {/* eslint-disable-next-line react/no-danger -- safeJsonLd() escapes characters that could break out of this script tag */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(organizationJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(websiteJsonLd) }} />
 
       {/* 1. Hero */}
       <section className="border-b border-paper-muted bg-white">
