@@ -12,3 +12,7 @@ supabase/.branches/
 supabase/.temp/
 supabase/snippets/
 e2e/test-results/
+
+.vercel/
+.env*
+!.env.local.example
