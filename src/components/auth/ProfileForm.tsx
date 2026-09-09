@@ -1,23 +1,21 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { buyerProfileSchema, BUSINESS_TYPE_LABELS, type BuyerProfileInput } from "@/lib/validations/auth";
 import { updateBuyerProfileAction } from "@/lib/auth/actions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
+import { CountryAutocomplete } from "@/components/auth/CountryAutocomplete";
 import { Select } from "@/components/ui/Select";
 import { FieldError, FormError, FormSuccess } from "@/components/ui/FormError";
 import type { BuyerProfile } from "@/lib/auth/session";
-import { getNames } from "country-list";
 
-const COUNTRY_NAMES = getNames();
 export function ProfileForm({ profile }: { profile: BuyerProfile | null }) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-  const [isCountryOpen, setIsCountryOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<BuyerProfileInput>({
@@ -30,16 +28,8 @@ export function ProfileForm({ profile }: { profile: BuyerProfile | null }) {
       website: profile?.website ?? "",
     },
   });
-const countryQuery = form.watch("country").trim();
 
-const filteredCountries =
-  countryQuery.length >= 2
-    ? COUNTRY_NAMES.filter((countryName) =>
-        countryName.toLowerCase().startsWith(countryQuery.toLowerCase()),
-      )
-    : [];
 
-const countryField = form.register("country");
   function onSubmit(input: BuyerProfileInput) {
     setServerError(null);
     setSaved(false);
@@ -82,71 +72,21 @@ const countryField = form.register("country");
           </Select>
           <FieldError message={form.formState.errors.businessType?.message} />
         </div>
-        <div className="relative">
-  <Label htmlFor="country">Country</Label>
-
-  <Input
-    id="country"
-    autoComplete="country-name"
-    placeholder="Type at least 2 letters"
-    role="combobox"
-    aria-autocomplete="list"
-    aria-expanded={isCountryOpen}
-    aria-controls="profile-country-suggestions"
-    {...countryField}
-    onChange={(event) => {
-      countryField.onChange(event);
-      setIsCountryOpen(event.target.value.trim().length >= 2);
-    }}
-    onFocus={() => {
-      setIsCountryOpen(countryQuery.length >= 2);
-    }}
-    onBlur={(event) => {
-      countryField.onBlur(event);
-
-      window.setTimeout(() => {
-        setIsCountryOpen(false);
-      }, 150);
-    }}
-  />
-
-  {isCountryOpen && countryQuery.length >= 2 && (
-    <div
-      id="profile-country-suggestions"
-      role="listbox"
-      className="absolute left-0 right-0 z-30 mt-1 max-h-48 overflow-y-auto rounded-md border border-paper-muted bg-white py-1 shadow-lg"
-    >
-      {filteredCountries.length > 0 ? (
-        filteredCountries.map((countryName) => (
-          <button
-            key={countryName}
-            type="button"
-            role="option"
-            className="block w-full px-3 py-2 text-left font-body text-sm text-ink hover:bg-paper-muted focus:bg-paper-muted focus:outline-none"
-            onMouseDown={(event) => {
-              event.preventDefault();
-
-              form.setValue("country", countryName, {
-                shouldDirty: true,
-                shouldValidate: true,
-              });
-
-              setIsCountryOpen(false);
-            }}
-          >
-            {countryName}
-          </button>
-        ))
-      ) : (
-        <p className="px-3 py-2 font-body text-sm text-ink-muted">
-          No matching country
-        </p>
-      )}
-    </div>
-  )}
-
-  <FieldError message={form.formState.errors.country?.message} />
-</div>
+<Controller
+                name="country"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <CountryAutocomplete
+                    id="country"
+                    label="Country"
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    error={fieldState.error?.message}
+                    required
+                  />
+                )}
+              />
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">

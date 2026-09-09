@@ -2,13 +2,14 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { buyerRegisterSchema, BUSINESS_TYPE_LABELS, type BuyerRegisterInput } from "@/lib/validations/auth";
 import { signUpBuyerAction } from "@/lib/auth/actions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
+import { CountryAutocomplete } from "@/components/auth/CountryAutocomplete";
 import { Select } from "@/components/ui/Select";
 import { FieldError, FormError, FormSuccess } from "@/components/ui/FormError";
 
@@ -102,11 +103,21 @@ export function RegisterForm() {
           </Select>
           <FieldError message={form.formState.errors.businessType?.message} />
         </div>
-        <div>
-          <Label htmlFor="country">Country</Label>
-          <Input id="country" {...form.register("country")} />
-          <FieldError message={form.formState.errors.country?.message} />
-        </div>
+        <Controller
+              name="country"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <CountryAutocomplete
+                  id="country"
+                  label="Country"
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  error={fieldState.error?.message}
+                  required
+                />
+              )}
+            />
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
