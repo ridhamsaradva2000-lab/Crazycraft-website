@@ -17,21 +17,28 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
   : undefined;
 const siteOrigin = siteUrl ? siteUrl.origin : undefined;
 
-// Module 10 -- CSP Report-Only baseline policy, plus violation reporting.
-// Intentionally permissive starting point covering exactly the third-party
-// origins already proven necessary by the verified production
+// Module 10 -- shared CSP policy, used in BOTH Report-Only and enforced
+// modes. Intentionally permissive starting point covering exactly the
+// third-party origins already proven necessary by the verified production
 // architecture: Meta Pixel (connect.facebook.net / www.facebook.com),
 // Cloudflare Turnstile (challenges.cloudflare.com), Supabase (derived from
 // the already-validated NEXT_PUBLIC_SUPABASE_URL above -- never a
 // second/hardcoded project), and placehold.co for configured placeholder
-// images. Report-Only means no resource is blocked at this stage.
-// report-uri (legacy, broad browser compatibility) and report-to (modern
-// Reporting API, paired with the Reporting-Endpoints header below) both
-// point at a minimal, unauthenticated, no-op-storage Route Handler used
-// only during this manual observation phase. siteOrigin/supabaseOrigin
-// are resolved once when this config module is evaluated (at build/start
-// time), not per request.
-const cspReportOnlyDirectives = [
+// images.
+//
+// The SAME directive list is served under two different header names,
+// chosen below by the enforcement gate: Content-Security-Policy-Report-Only
+// (default -- Production, local/development, and every other Preview
+// deployment; violations are only logged, nothing is blocked) or the
+// enforced Content-Security-Policy (ONLY when running on the dedicated
+// csp-enforced-preview branch's own Preview deployment with the
+// branch-scoped CSP_ENFORCE_PREVIEW flag explicitly set to "true" --
+// see the gate below). report-uri (legacy, broad browser compatibility)
+// and report-to (modern Reporting API, paired with the Reporting-Endpoints
+// header below) both point at a minimal, unauthenticated, no-op-storage
+// Route Handler. siteOrigin/supabaseOrigin are resolved once when this
+// config module is evaluated (at build/start time), not per request.
+const cspDirectives = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://connect.facebook.net https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
@@ -51,7 +58,29 @@ const cspReportOnlyDirectives = [
   "report-to csp-endpoint",
 ];
 
-const cspReportOnlyValue = cspReportOnlyDirectives.join("; ") + ";";
+const cspValue = cspDirectives.join("; ") + ";";
+
+// Enforced CSP requires ALL THREE conditions to hold simultaneously:
+//   1. Vercel's own VERCEL_ENV reports "preview"
+//   2. Vercel's own VERCEL_GIT_COMMIT_REF is exactly "csp-enforced-preview"
+//   3. the branch-scoped CSP_ENFORCE_PREVIEW flag is exactly "true"
+// Gate 2 is defense-in-depth on top of gate 3: CSP_ENFORCE_PREVIEW is
+// intended to be branch-scoped in Vercel's own dashboard, but this keeps
+// the source code itself safe even if that flag were ever accidentally
+// broadened to all Preview deployments -- enforcement still could not
+// activate on any branch other than csp-enforced-preview. If
+// VERCEL_GIT_COMMIT_REF is ever unavailable/undefined for any reason,
+// this comparison is simply false, so the policy fails closed to
+// Report-Only rather than enforcing.
+const isEnforcedCspPreview =
+  process.env.VERCEL_ENV === "preview" &&
+  process.env.VERCEL_GIT_COMMIT_REF === "csp-enforced-preview" &&
+  process.env.CSP_ENFORCE_PREVIEW === "true";
+
+const cspHeaderKey = isEnforcedCspPreview
+  ? "Content-Security-Policy"
+  : "Content-Security-Policy-Report-Only";
+
 const supabaseProtocol: "http" | "https" | undefined =
   supabaseUrl?.protocol === "http:" ? "http" : supabaseUrl?.protocol === "https:" ? "https" : undefined;
 
@@ -82,8 +111,8 @@ const nextConfig: NextConfig = {
           value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
         },
         {
-          key: "Content-Security-Policy-Report-Only",
-          value: cspReportOnlyValue,
+          key: cspHeaderKey,
+          value: cspValue,
         },
         {
           key: "Reporting-Endpoints",
