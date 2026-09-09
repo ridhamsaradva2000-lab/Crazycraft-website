@@ -49,10 +49,10 @@ const cspDirectives = [
   supabaseOrigin
     ? `connect-src 'self' https://connect.facebook.net https://www.facebook.com https://challenges.cloudflare.com ${supabaseOrigin}`
     : "connect-src 'self' https://connect.facebook.net https://www.facebook.com https://challenges.cloudflare.com",
-  "frame-src https://challenges.cloudflare.com",
+  "frame-src https://challenges.cloudflare.com https://www.facebook.com",
   "object-src 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  "form-action 'self' https://www.facebook.com",
   "frame-ancestors 'none'",
   "report-uri /api/csp-report",
   "report-to csp-endpoint",
