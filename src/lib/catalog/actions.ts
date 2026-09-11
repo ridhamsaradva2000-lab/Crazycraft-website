@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import sharp from "sharp";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminProfile } from "@/lib/auth/session";
@@ -1184,6 +1183,8 @@ export async function finalizeProductImageUploadAction(
   if (downloadedBytes.length <= 0 || downloadedBytes.length > MAX_PRODUCT_IMAGE_BYTES) {
     return { error: PRODUCT_IMAGE_TOO_LARGE_ERROR };
   }
+
+  const { default: sharp } = await import("sharp");
 
   let metadata;
   try {
