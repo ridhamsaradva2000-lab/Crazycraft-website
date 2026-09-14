@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { logSafeDiagnostic } from "@/lib/diagnostics/safeLog.server";
 import { listAdminUsers, getActivityLog } from "@/lib/crm/data";
 import { Container } from "@/components/ui/Container";
 import { StatusBadge } from "@/components/crm/StatusBadge";
@@ -73,7 +74,7 @@ export default async function LeadDetailPage({
       // actually something else went wrong). Log safe context only
       // (never the raw error to the browser) and show a generic
       // operational message instead.
-      console.error("load inquiry failed:", inquiryError.code);
+      logSafeDiagnostic("adminLeadDetail.loadInquiry", inquiryError);
       return <OperationalError />;
     }
     if (!inquiry) notFound();
@@ -189,7 +190,7 @@ export default async function LeadDetailPage({
     .maybeSingle();
 
   if (quoteRequestError) {
-    console.error("load quote request failed:", quoteRequestError.code);
+    logSafeDiagnostic("adminLeadDetail.loadQuoteRequest", quoteRequestError);
     return <OperationalError />;
   }
   if (!quoteRequest) notFound();
@@ -200,7 +201,7 @@ export default async function LeadDetailPage({
     .eq("quote_request_id", id);
 
   if (itemsError) {
-    console.error("load quote request items failed:", itemsError.code);
+    logSafeDiagnostic("adminLeadDetail.loadQuoteRequestItems", itemsError);
   }
 
   const [adminsResult, activityResult] = await Promise.all([

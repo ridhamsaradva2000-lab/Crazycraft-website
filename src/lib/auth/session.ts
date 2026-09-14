@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { logSafeDiagnostic } from "@/lib/diagnostics/safeLog.server";
 import type { Database } from "@/types/database.types";
 
 type AdminRole = Database["public"]["Enums"]["admin_role"];
@@ -51,7 +52,11 @@ export const getAdminProfile = cache(async (): Promise<AdminProfile | null> => {
     .eq("id", user.id)
     .maybeSingle();
 
-  if (error || !data) return null;
+  if (error) {
+    logSafeDiagnostic("getAdminProfile", error);
+    return null;
+  }
+  if (!data) return null;
 
   return { id: data.id, fullName: data.full_name, role: data.role };
 });
@@ -70,7 +75,11 @@ export const getBuyerProfile = cache(async (): Promise<BuyerProfile | null> => {
     .eq("id", user.id)
     .maybeSingle();
 
-  if (error || !data) return null;
+  if (error) {
+    logSafeDiagnostic("getBuyerProfile", error);
+    return null;
+  }
+  if (!data) return null;
 
   return {
     id: data.id,

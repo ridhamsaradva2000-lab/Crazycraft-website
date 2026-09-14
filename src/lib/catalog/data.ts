@@ -1,5 +1,8 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { cache } from "react";
+import { createPublicCatalogClient } from "@/lib/supabase/public";
+import { logSafeDiagnostic } from "@/lib/diagnostics/safeLog.server";
 import { createSitemapClient } from "@/lib/supabase/sitemap";
 import { catalogSlugSchema } from "@/lib/catalog/validations";
 
@@ -36,15 +39,15 @@ export interface CategoryResult {
   error: boolean;
 }
 
-export async function getPublishedCategories(): Promise<CategoryResult> {
-  const supabase = await createClient();
+const getPublishedCategoriesCached = cache(async (): Promise<CategoryResult> => {
+  const supabase = createPublicCatalogClient();
   const { data, error } = await supabase
     .from("categories")
     .select("id, slug, name, description, image_url")
     .order("name");
 
   if (error) {
-    console.error("getPublishedCategories failed:", error.code);
+    logSafeDiagnostic("getPublishedCategories", error);
     return { categories: [], error: true };
   }
 
@@ -58,6 +61,10 @@ export async function getPublishedCategories(): Promise<CategoryResult> {
     })),
     error: false,
   };
+});
+
+export async function getPublishedCategories(): Promise<CategoryResult> {
+  return getPublishedCategoriesCached();
 }
 
 export interface CategoryDetailResult {
@@ -65,8 +72,8 @@ export interface CategoryDetailResult {
   error: boolean;
 }
 
-export async function getCategoryBySlug(slug: string): Promise<CategoryDetailResult> {
-  const supabase = await createClient();
+const getCategoryBySlugCached = cache(async (slug: string): Promise<CategoryDetailResult> => {
+  const supabase = createPublicCatalogClient();
   const { data, error } = await supabase
     .from("categories")
     .select("id, slug, name, description, image_url")
@@ -74,7 +81,7 @@ export async function getCategoryBySlug(slug: string): Promise<CategoryDetailRes
     .maybeSingle();
 
   if (error) {
-    console.error("getCategoryBySlug failed:", error.code);
+    logSafeDiagnostic("getCategoryBySlug", error);
     return { category: null, error: true };
   }
 
@@ -90,6 +97,10 @@ export async function getCategoryBySlug(slug: string): Promise<CategoryDetailRes
     },
     error: false,
   };
+});
+
+export async function getCategoryBySlug(slug: string): Promise<CategoryDetailResult> {
+  return getCategoryBySlugCached(slug);
 }
 
 export interface CollectionOption {
@@ -314,14 +325,14 @@ async function getPrimaryImages(
   const images = new Map<string, { url: string; alt_text: string }>();
   if (productIds.length === 0) return { images, error: false };
 
-  const supabase = await createClient();
+  const supabase = createPublicCatalogClient();
   const { data, error } = await supabase
     .from("product_images")
     .select("product_id, url, alt_text, is_primary, sort_order")
     .in("product_id", productIds);
 
   if (error) {
-    console.error("getPrimaryImages failed:", error.code);
+    logSafeDiagnostic("getPrimaryImages", error);
     return { images, error: true };
   }
 
@@ -527,8 +538,8 @@ export async function getRelatedProducts(params: {
 }
 
 /** Homepage featured products — simply the most recent published products. */
-export async function getFeaturedProducts(limit = 4): Promise<RelatedProductsResult> {
-  const supabase = await createClient();
+const getFeaturedProductsCached = cache(async (limit: number): Promise<RelatedProductsResult> => {
+  const supabase = createPublicCatalogClient();
   const { data, error } = await supabase
     .from("products")
     .select(PRODUCT_LIST_COLUMNS)
@@ -537,7 +548,7 @@ export async function getFeaturedProducts(limit = 4): Promise<RelatedProductsRes
     .limit(limit);
 
   if (error) {
-    console.error("getFeaturedProducts failed:", error.code);
+    logSafeDiagnostic("getFeaturedProducts", error);
     return { products: [], error: true };
   }
 
@@ -565,6 +576,10 @@ export async function getFeaturedProducts(limit = 4): Promise<RelatedProductsRes
     }),
     error: imagesError,
   };
+});
+
+export async function getFeaturedProducts(limit = 4): Promise<RelatedProductsResult> {
+  return getFeaturedProductsCached(limit);
 }
 
 // ============================================================================
