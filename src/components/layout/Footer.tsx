@@ -3,6 +3,7 @@ import type { Route } from "next";
 import { Container } from "@/components/ui/Container";
 import { SITE_NAME } from "@/lib/constants";
 import { getPublishedCategories } from "@/lib/catalog/data";
+import { NewsletterSignupForm } from "@/components/newsletter/NewsletterSignupForm";
 
 const COMPANY_LINKS: { label: string; href: Route }[] = [
   { label: "About", href: "/about" },
@@ -92,6 +93,17 @@ export async function Footer() {
           </div>
         </div>
 
+        <div className="mt-10 border-t border-paper-muted pt-8">
+          <div className="max-w-xl">
+            <h2 className="font-display text-sm font-medium text-brand-900">Newsletter</h2>
+            <p className="mt-2 font-body text-sm text-ink-muted">
+              Get CrazyCraft product updates and sourcing news by email.
+            </p>
+            <div className="mt-4">
+              <NewsletterSignupForm source="footer" />
+            </div>
+          </div>
+        </div>
         <div className="mt-10 border-t border-paper-muted pt-6">
           <p className="font-body text-xs text-ink-muted">
             © {currentYear} {SITE_NAME}. All rights reserved.

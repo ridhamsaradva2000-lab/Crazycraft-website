@@ -28,6 +28,9 @@ import { z } from "zod";
  *   is deliberately NOT hardcoded to x-forwarded-for by default, and why
  *   it's opt-in rather than assumed.
  *
+ * - RESEND_API_KEY: Server-only Resend credential used for newsletter confirmation email delivery.
+ * - RATE_LIMIT_HMAC_SECRET: Independent 256-bit lowercase-hex secret used to HMAC newsletter rate-limit identifiers; never client-bundled.
+ * - NEWSLETTER_TOKEN_SECRET: Separate independent 256-bit lowercase-hex secret used to derive unsubscribe tokens; never client-bundled and never shared with the rate-limit secret.
  * This file exists to establish the pattern: any future secret is
  * declared here, guarded by "server-only", and never in env.client.ts.
  */
@@ -59,6 +62,15 @@ const serverEnvSchema = z.object({
     (value) => (value === "" ? undefined : value),
     z.string().min(1).optional()
   ),
+  // See top-level JSDoc above for RESEND_API_KEY / RATE_LIMIT_HMAC_SECRET /
+  // NEWSLETTER_TOKEN_SECRET descriptions.
+  RESEND_API_KEY: z.string().min(1),
+  RATE_LIMIT_HMAC_SECRET: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/, "must be exactly 64 lowercase hexadecimal characters (32 random bytes)"),
+  NEWSLETTER_TOKEN_SECRET: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/, "must be exactly 64 lowercase hexadecimal characters (32 random bytes)"),
 });
 
 const parsed = serverEnvSchema.safeParse({
@@ -69,6 +81,9 @@ const parsed = serverEnvSchema.safeParse({
   META_TEST_EVENT_CODE: process.env.META_TEST_EVENT_CODE,
   CRON_SECRET: process.env.CRON_SECRET,
   TRUSTED_CLIENT_IP_HEADER: process.env.TRUSTED_CLIENT_IP_HEADER,
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  RATE_LIMIT_HMAC_SECRET: process.env.RATE_LIMIT_HMAC_SECRET,
+  NEWSLETTER_TOKEN_SECRET: process.env.NEWSLETTER_TOKEN_SECRET,
 });
 
 if (!parsed.success) {
