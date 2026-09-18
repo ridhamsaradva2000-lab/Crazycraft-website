@@ -65,6 +65,17 @@ export default async function ContactPage({
           </p>
         )}
 
+        <div className="mb-8 rounded-lg border border-paper-muted bg-paper px-5 py-4 sm:px-6">
+          <p className="font-body text-sm text-ink-muted">
+            Prefer email? Send your requirements directly to{" "}
+            <a
+              href="mailto:sales@crazycraftglobal.com"
+              className="font-medium text-brand-900 underline underline-offset-2 hover:text-brand-900/80"
+            >
+              sales@crazycraftglobal.com
+            </a>
+          </p>
+        </div>
         <div className="mt-8 rounded-lg border border-paper-muted bg-white p-8">
           <Suspense fallback={<p className="font-body text-sm text-ink-muted">Loading form…</p>}>
             <InquiryForm productId={product?.id} productName={product?.name} />
