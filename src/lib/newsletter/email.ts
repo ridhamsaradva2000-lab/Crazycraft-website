@@ -65,8 +65,8 @@ export async function sendNewsletterConfirmationEmail(
             </tr>
             <tr>
               <td style="padding:24px 40px 0 40px;">
-                <p style="margin:0 0 8px 0; font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:1.5; color:#948d7e; text-align:center;">If the button doesn't work, copy and paste this link into your browser:</p>
-                <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:1.5; text-align:center; word-break:break-all;"><a href="${confirmUrl.toString()}" target="_blank" style="color:#46618a; text-decoration:underline;">${confirmUrl.toString()}</a></p>
+                <p style="margin:0 0 8px 0; font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:1.5; color:#948d7e; text-align:center;">If the button doesn't work, use this confirmation link:</p>
+                <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:1.5; text-align:center;"><a href="${confirmUrl.toString()}" target="_blank" style="color:#46618a; text-decoration:underline;">Open confirmation link</a></p>
               </td>
             </tr>
             <tr>
@@ -85,8 +85,8 @@ export async function sendNewsletterConfirmationEmail(
             <tr>
               <td style="padding:24px 40px; text-align:center;">
                 <p style="margin:0 0 4px 0; font-family:Arial, Helvetica, sans-serif; font-size:12px; font-weight:bold; color:#948d7e;">CrazyCraft</p>
-                <p style="margin:0 0 4px 0; font-family:Arial, Helvetica, sans-serif; font-size:11px; color:#a8a294;">Indian Handicrafts &bull; OEM &bull; Private Label &bull; Bulk Orders</p>
-                <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11px; color:#c2bdb0;">&copy; 2026 CrazyCraft. All rights reserved.</p>
+                <p style="margin:0 0 4px 0; font-family:Arial, Helvetica, sans-serif; font-size:11px; color:#8f8878;">Indian Handicrafts &bull; OEM &bull; Private Label &bull; Bulk Orders</p>
+                <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:11px; color:#a39c8c;">&copy; 2026 CrazyCraft. All rights reserved.</p>
               </td>
             </tr>
           </table>
