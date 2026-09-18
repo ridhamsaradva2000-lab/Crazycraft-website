@@ -65,8 +65,17 @@ export default async function ContactPage({
           </p>
         )}
 
-        <div className="mb-8 rounded-lg border border-paper-muted bg-paper px-5 py-4 sm:px-6">
-          <p className="font-body text-sm text-ink-muted">
+        <div className="mb-8 rounded-lg border border-paper-muted bg-paper px-4 py-3 sm:px-6 sm:py-4">
+          <div className="sm:hidden">
+            <p className="font-body text-xs text-ink-muted">Prefer email?</p>
+            <a
+              href="mailto:sales@crazycraftglobal.com"
+              className="mt-0.5 block font-body text-sm font-medium text-brand-900 underline underline-offset-2 hover:text-brand-900/80"
+            >
+              sales@crazycraftglobal.com
+            </a>
+          </div>
+          <p className="hidden font-body text-sm text-ink-muted sm:block">
             Prefer email? Send your requirements directly to{" "}
             <a
               href="mailto:sales@crazycraftglobal.com"
