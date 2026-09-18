@@ -14,7 +14,7 @@ export function ConfirmSubmitButton() {
       type="submit"
       disabled={pending}
       aria-busy={pending}
-      className="inline-flex w-full items-center justify-center rounded-md bg-brand-900 px-8 py-3.5 font-body text-base font-semibold text-white shadow-sm transition-colors hover:bg-brand-900/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-900 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:px-10"
+      className="inline-flex items-center justify-center whitespace-nowrap rounded-md bg-brand-900 px-7 py-3 font-body text-base font-semibold text-white shadow-sm transition-colors hover:bg-brand-900/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-900 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70 sm:px-9 sm:py-3.5"
     >
       {pending ? "Confirming…" : "Confirm Subscription"}
     </button>
