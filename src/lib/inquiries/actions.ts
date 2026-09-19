@@ -13,6 +13,7 @@ import { inquiryFormSchema, type InquiryFormInput } from "@/lib/validations/inqu
 import { CONSENT_COOKIE_NAME, parseConsentCookie } from "@/lib/consent/consent";
 import { isValidMetaPixelId } from "@/lib/meta/pixel-config";
 import { deliverPendingCapiEvents } from "@/lib/meta/capi";
+import { sendRfqAcknowledgementForInquiry } from "@/lib/email/rfqAcknowledgement";
 import type { Database } from "@/types/database.types";
 
 export interface SubmitInquiryResult {
@@ -377,6 +378,13 @@ export async function submitInquiryAction(input: InquiryFormInput): Promise<Subm
               deliveryError instanceof Error ? deliveryError.message : "unknown_error"
             );
           }
+        });
+      }
+
+      if (rpcResult.inquiry_id) {
+        const inquiryId = rpcResult.inquiry_id;
+        after(async () => {
+          await sendRfqAcknowledgementForInquiry(inquiryId);
         });
       }
 
