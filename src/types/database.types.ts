@@ -378,6 +378,133 @@ export type Database = {
         }
         Relationships: []
       }
+      email_conversations: {
+        Row: {
+          buyer_email: string
+          created_at: string
+          id: string
+          inquiry_id: string
+          provider: string
+          provider_thread_id: string | null
+          rfq_reference: string
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_email: string
+          created_at?: string
+          id?: string
+          inquiry_id: string
+          provider?: string
+          provider_thread_id?: string | null
+          rfq_reference?: string
+          status?: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_email?: string
+          created_at?: string
+          id?: string
+          inquiry_id?: string
+          provider?: string
+          provider_thread_id?: string | null
+          rfq_reference?: string
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_conversations_inquiry_id_fkey"
+            columns: ["inquiry_id"]
+            isOneToOne: true
+            referencedRelation: "inquiries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_messages: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          direction: string
+          error_message: string | null
+          html_body: string | null
+          id: string
+          in_reply_to: string | null
+          provider: string
+          provider_message_id: string | null
+          provider_thread_id: string | null
+          purpose: string
+          recipient_email: string
+          references_header: string | null
+          rfc_message_id: string | null
+          sender_email: string
+          sender_name: string | null
+          sent_at: string | null
+          status: string
+          subject: string
+          text_body: string
+          updated_at: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          direction: string
+          error_message?: string | null
+          html_body?: string | null
+          id?: string
+          in_reply_to?: string | null
+          provider?: string
+          provider_message_id?: string | null
+          provider_thread_id?: string | null
+          purpose?: string
+          recipient_email: string
+          references_header?: string | null
+          rfc_message_id?: string | null
+          sender_email: string
+          sender_name?: string | null
+          sent_at?: string | null
+          status?: string
+          subject: string
+          text_body: string
+          updated_at?: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          error_message?: string | null
+          html_body?: string | null
+          id?: string
+          in_reply_to?: string | null
+          provider?: string
+          provider_message_id?: string | null
+          provider_thread_id?: string | null
+          purpose?: string
+          recipient_email?: string
+          references_header?: string | null
+          rfc_message_id?: string | null
+          sender_email?: string
+          sender_name?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          text_body?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "email_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inquiries: {
         Row: {
           assigned_to: string | null
@@ -1523,6 +1650,7 @@ export type Database = {
         Args: { p_ip_hash?: string; p_visitor_hash: string }
         Returns: boolean
       }
+      generate_rfq_reference: { Args: never; Returns: string }
       list_crm_assignment_admins: {
         Args: never
         Returns: {
