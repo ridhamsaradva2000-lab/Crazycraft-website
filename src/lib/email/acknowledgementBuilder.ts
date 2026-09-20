@@ -104,27 +104,16 @@ function buildHtmlBody(
   inquiry: InquiryRow,
   detailEntries: AcknowledgementDetailEntry[]
 ): string {
-  const detailRows = detailEntries
-    .map(
-      (entry) => `        <tr>
-          <td style="padding: 4px 12px 4px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333; vertical-align: top; white-space: nowrap;"><strong>${escapeHtml(entry.label)}</strong></td>
-          <td style="padding: 4px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333; vertical-align: top;">${escapeHtml(entry.value)}</td>
-        </tr>`
-    )
-    .join("\n");
+  const detailLines = detailEntries
+    .map((entry) => `<strong>${escapeHtml(entry.label)}:</strong> ${escapeHtml(entry.value)}`)
+    .join("<br />\n");
 
   const detailsSection =
     detailEntries.length > 0
-      ? `<p style="margin: 24px 0 8px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;"><strong>Requirement Details</strong></p>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border: 1px solid #e0e0e0; border-radius: 6px; background-color: #fafafa;">
-  <tr>
-    <td style="padding: 16px 20px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-${detailRows}
-      </table>
-    </td>
-  </tr>
-</table>`
+      ? `<p style="margin: 24px 0 4px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;"><strong>Requirement Details</strong></p>
+<p style="margin: 0 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">
+${detailLines}
+</p>`
       : "";
 
   return `<p style="margin: 0 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Hi <strong>${escapeHtml(inquiry.name)}</strong>,<br />
