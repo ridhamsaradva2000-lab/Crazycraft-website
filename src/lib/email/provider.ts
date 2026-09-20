@@ -1,4 +1,6 @@
 import "server-only";
+import { isGmailProviderConfigured } from "@/lib/email/env";
+import { GmailSalesEmailProvider } from "@/lib/email/gmailProvider";
 
 /**
  * Bounded provider-failure contract. error_message in email_messages
@@ -62,10 +64,14 @@ export class NotConfiguredSalesEmailProvider implements SalesEmailProvider {
 }
 
 /**
- * Always returns NotConfiguredSalesEmailProvider in Phase 1B-ii. A real
- * Gmail-backed implementation is a deliberate future swap, not something
- * that activates implicitly from env var presence.
+ * Returns the real Gmail-backed provider only when all 3 Gmail env vars
+ * are present (isGmailProviderConfigured) -- partial configuration is
+ * deliberately treated as NOT configured, never presented as ready.
+ * Otherwise returns the not-configured provider, exactly as before.
  */
 export function getSalesEmailProvider(): SalesEmailProvider {
+  if (isGmailProviderConfigured) {
+    return new GmailSalesEmailProvider();
+  }
   return new NotConfiguredSalesEmailProvider();
 }
