@@ -106,7 +106,17 @@ function buildHtmlBody(
 ): string {
   const detailLines = detailEntries
     .map((entry) => `<strong>${escapeHtml(entry.label)}:</strong> ${escapeHtml(entry.value)}`)
-    .join("<br />\n");
+    .reduce((accumulated, line, index) => {
+      if (index === 0) return line;
+      // Insert one extra blank line specifically after the
+      // "Requirement" detail (typically a longer, free-text field) so
+      // it visually separates from the shorter Volume/Destination/
+      // Timeline lines that follow. No other pair of details gets
+      // extra spacing, and nothing is added if Requirement is last.
+      const previousEntry = detailEntries[index - 1];
+      const separator = previousEntry?.label === "Requirement" ? "<br /><br />\n" : "<br />\n";
+      return `${accumulated}${separator}${line}`;
+    }, "");
 
   const detailsSection =
     detailEntries.length > 0
@@ -121,7 +131,7 @@ Thank you for your inquiry.<br />
 <strong>We&rsquo;ve received your requirement.</strong></p>
 <p style="margin: 0 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Reference: <strong>${escapeHtml(rfqReference)}</strong></p>
 ${detailsSection}
-<p style="margin: 24px 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Our team is reviewing your requirement. <strong>Mr. Ridham Saradva</strong> will follow up with you shortly regarding pricing, product details, and the next steps for your quotation.</p>
+<p style="margin: 24px 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Our team is reviewing your requirement. <strong>Mr.&nbsp;Ridham&nbsp;Saradva</strong> will follow up with you shortly regarding pricing, product details, and the next steps for your quotation.</p>
 <p style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Regards,<br /><strong>CrazyCraft Sales</strong></p>`;
 }
 
