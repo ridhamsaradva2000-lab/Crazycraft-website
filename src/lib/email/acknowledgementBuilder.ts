@@ -93,7 +93,6 @@ function buildTextBody(
     "",
     "Regards,",
     "CrazyCraft Sales",
-    "www.crazycraftglobal.com",
     "",
     `Reference: ${rfqReference}`
   );
@@ -124,8 +123,7 @@ ${detailLines}
 ${detailsSection}
 <p style="margin: 24px 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Our team is reviewing your requirement. <strong>Mr.&nbsp;Ridham&nbsp;Saradva</strong> will follow up with you shortly regarding pricing, product details, and the next steps for your quotation.</p>
 <p style="margin: 0 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Regards,<br />
-<strong>CrazyCraft Sales</strong><br />
-<a href="https://www.crazycraftglobal.com" style="color: #1a1a1a;">www.crazycraftglobal.com</a></p>
+<strong>CrazyCraft Sales</strong></p>
 <p style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Reference: <strong>${escapeHtml(rfqReference)}</strong></p>`;
 }
 
