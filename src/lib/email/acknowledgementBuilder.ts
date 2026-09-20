@@ -1,5 +1,6 @@
 import "server-only";
 import type { Database } from "@/types/database.types";
+import { TIMELINE_LABELS } from "@/lib/validations/inquiry";
 
 type InquiryRow = Database["public"]["Tables"]["inquiries"]["Row"];
 
@@ -18,21 +19,31 @@ export function canonicalRfqSubject(rfqReference: string): string {
   return `[${rfqReference}] We received your requirement`;
 }
 
+interface AcknowledgementDetailEntry {
+  label: string;
+  value: string;
+}
+
 /**
  * Deterministic acknowledgement builder. Uses ONLY the saved inquiry row
  * and a separately-looked-up authoritative product name -- never
  * client-submitted text. Any field null/absent on the saved inquiry is
- * OMITTED entirely; nothing is ever invented.
+ * OMITTED entirely; nothing is ever invented. Timeline is rendered via
+ * the canonical TIMELINE_LABELS map (imported, not duplicated) so the
+ * buyer never sees a raw enum value.
  */
 export function buildRfqAcknowledgement(
   rfqReference: string,
   inquiry: InquiryRow,
   productName: string | null
 ): RfqAcknowledgementContent {
-  const detailLines: string[] = [];
-  if (productName) detailLines.push(`Product: ${productName}`);
-  if (inquiry.volume_range) detailLines.push(`Volume: ${inquiry.volume_range}`);
-  if (inquiry.shipping_country) detailLines.push(`Destination: ${inquiry.shipping_country}`);
+  const detailEntries: AcknowledgementDetailEntry[] = [];
+  if (productName) detailEntries.push({ label: "Product", value: productName });
+  if (inquiry.message) detailEntries.push({ label: "Requirement", value: inquiry.message });
+  if (inquiry.volume_range) detailEntries.push({ label: "Volume", value: inquiry.volume_range });
+  if (inquiry.shipping_country) {
+    detailEntries.push({ label: "Destination", value: inquiry.shipping_country });
+  }
   // private_label_required is intentionally OMITTED here. The current
   // submit_inquiry call site sends
   // `p_private_label_required: data.privateLabelRequired ?? false`, so a
@@ -41,44 +52,88 @@ export function buildRfqAcknowledgement(
   // only actual submitted values, never invent missing values"), this
   // field cannot be safely rendered until repository evidence proves its
   // provenance (explicit selection vs. default fallback).
-  if (inquiry.timeline) detailLines.push(`Timeline: ${inquiry.timeline}`);
+  if (inquiry.timeline) {
+    const timelineLabel = TIMELINE_LABELS[inquiry.timeline];
+    // If the enum ever gains a value not yet present in the canonical
+    // label map, omit the line entirely rather than fall back to the
+    // raw enum value -- never show anything but a human-friendly label.
+    if (timelineLabel) detailEntries.push({ label: "Timeline", value: timelineLabel });
+  }
 
   const subject = canonicalRfqSubject(rfqReference);
+  const textBody = buildTextBody(rfqReference, inquiry, detailEntries);
+  const htmlBody = buildHtmlBody(rfqReference, inquiry, detailEntries);
 
-  const textLines = [
+  return { subject, textBody, htmlBody };
+}
+
+function buildTextBody(
+  rfqReference: string,
+  inquiry: InquiryRow,
+  detailEntries: AcknowledgementDetailEntry[]
+): string {
+  const lines: string[] = [
     `Hi ${inquiry.name},`,
     "",
-    "Thank you for contacting CrazyCraft.",
-    "",
-    "We have received your requirement.",
+    "Thank you for your inquiry.",
+    "We've received your requirement.",
     "",
     `Reference: ${rfqReference}`,
   ];
-  if (detailLines.length > 0) {
-    textLines.push("");
-    textLines.push(...detailLines);
+
+  if (detailEntries.length > 0) {
+    lines.push("", "Requirement Details", "");
+    for (const entry of detailEntries) {
+      lines.push(`${entry.label}: ${entry.value}`);
+    }
   }
-  textLines.push(
+
+  lines.push(
     "",
-    "Our export team will review the details and follow up with you.",
+    "Our team is reviewing your requirement. Mr. Ridham Saradva will follow up with you shortly regarding pricing, product details, and the next steps for your quotation.",
     "",
     "Regards,",
     "CrazyCraft Sales"
   );
-  const textBody = textLines.join("\n");
 
-  const detailHtml =
-    detailLines.length > 0 ? `<p>${detailLines.map(escapeHtml).join("<br />")}</p>` : "";
+  return lines.join("\n");
+}
 
-  const htmlBody = `<p>Hi ${escapeHtml(inquiry.name)},</p>
-<p>Thank you for contacting CrazyCraft.</p>
-<p>We have received your requirement.</p>
-<p>Reference: ${escapeHtml(rfqReference)}</p>
-${detailHtml}
-<p>Our export team will review the details and follow up with you.</p>
-<p>Regards,<br />CrazyCraft Sales</p>`;
+function buildHtmlBody(
+  rfqReference: string,
+  inquiry: InquiryRow,
+  detailEntries: AcknowledgementDetailEntry[]
+): string {
+  const detailRows = detailEntries
+    .map(
+      (entry) => `        <tr>
+          <td style="padding: 4px 12px 4px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333; vertical-align: top; white-space: nowrap;"><strong>${escapeHtml(entry.label)}</strong></td>
+          <td style="padding: 4px 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #333333; vertical-align: top;">${escapeHtml(entry.value)}</td>
+        </tr>`
+    )
+    .join("\n");
 
-  return { subject, textBody, htmlBody };
+  const detailsSection =
+    detailEntries.length > 0
+      ? `<p style="margin: 24px 0 8px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;"><strong>Requirement Details</strong></p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border: 1px solid #e0e0e0; border-radius: 6px; background-color: #fafafa;">
+  <tr>
+    <td style="padding: 16px 20px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+${detailRows}
+      </table>
+    </td>
+  </tr>
+</table>`
+      : "";
+
+  return `<p style="margin: 0 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Hi <strong>${escapeHtml(inquiry.name)}</strong>,<br />
+Thank you for your inquiry.<br />
+<strong>We&rsquo;ve received your requirement.</strong></p>
+<p style="margin: 0 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Reference: <strong>${escapeHtml(rfqReference)}</strong></p>
+${detailsSection}
+<p style="margin: 24px 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Our team is reviewing your requirement. <strong>Mr. Ridham Saradva</strong> will follow up with you shortly regarding pricing, product details, and the next steps for your quotation.</p>
+<p style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Regards,<br /><strong>CrazyCraft Sales</strong></p>`;
 }
 
 function escapeHtml(value: string): string {
