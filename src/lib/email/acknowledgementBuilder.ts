@@ -105,26 +105,54 @@ function buildHtmlBody(
   inquiry: InquiryRow,
   detailEntries: AcknowledgementDetailEntry[]
 ): string {
-  const detailLines = detailEntries
-    .map((entry) => `&bull; <strong>${escapeHtml(entry.label)}:</strong> ${escapeHtml(entry.value)}`)
-    .join("<br />\n");
+  const detailRows = detailEntries
+    .map(
+      (entry) =>
+        `<div class="rd-row" style="margin: 0;"><span class="rd-label">&bull; <strong>${escapeHtml(entry.label)}:</strong></span><span class="rd-gap"> </span><span class="rd-value">${escapeHtml(entry.value)}</span></div>`
+    )
+    .join("\n");
 
   const detailsSection =
     detailEntries.length > 0
       ? `<p style="margin: 24px 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;"><strong>Your Requirement Summary</strong></p>
-<p style="margin: 0 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">
-${detailLines}
-</p>`
+<div class="rd-list" style="margin: 0 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">
+${detailRows}
+</div>`
       : "";
 
-  return `<p style="margin: 0 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Hi <strong>${escapeHtml(inquiry.name)}</strong>,</p>
+  return `<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    @media only screen and (max-width: 600px) {
+      .rd-list { display: table !important; width: 100% !important; }
+      .rd-row { display: table-row !important; }
+      .rd-label {
+        display: table-cell !important;
+        white-space: nowrap !important;
+        padding-right: 4px !important;
+        vertical-align: top !important;
+      }
+      .rd-gap { display: none !important; }
+      .rd-value {
+        display: table-cell !important;
+        vertical-align: top !important;
+      }
+    }
+  </style>
+</head>
+<body>
+<p style="margin: 0 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Hi <strong>${escapeHtml(inquiry.name)}</strong>,</p>
 <p style="margin: 0 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Thank you for your inquiry.<br />
 <strong>We&rsquo;ve received your requirement.</strong></p>
 ${detailsSection}
 <p style="margin: 24px 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Our team is reviewing your requirement. <strong>Mr.&nbsp;Ridham&nbsp;Saradva</strong> will follow up with you shortly regarding pricing, product details, and the next steps for your quotation.</p>
 <p style="margin: 0 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Regards,<br />
 <strong>CrazyCraft Sales</strong></p>
-<p style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Reference: <strong>${escapeHtml(rfqReference)}</strong></p>`;
+<p style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Reference: <strong>${escapeHtml(rfqReference)}</strong></p>
+</body>
+</html>`;
 }
 
 function escapeHtml(value: string): string {
