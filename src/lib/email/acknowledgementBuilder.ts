@@ -106,10 +106,11 @@ function buildHtmlBody(
   detailEntries: AcknowledgementDetailEntry[]
 ): string {
   const detailRows = detailEntries
-    .map(
-      (entry) =>
-        `<div class="rd-row" style="margin: 0;"><span class="rd-label">&bull; <strong>${escapeHtml(entry.label)}:</strong></span><span class="rd-gap"> </span><span class="rd-value">${escapeHtml(entry.value)}</span></div>`
-    )
+    .map((entry, index) => {
+      const isLastRow = index === detailEntries.length - 1;
+      const rowPaddingBottom = isLastRow ? "0" : "4px";
+      return `<div class="rd-row" style="margin: 0;"><span class="rd-label" style="padding-bottom: ${rowPaddingBottom};">&bull; <strong>${escapeHtml(entry.label)}:</strong></span><span class="rd-gap"> </span><span class="rd-value" style="padding-bottom: ${rowPaddingBottom};">${escapeHtml(entry.value)}</span></div>`;
+    })
     .join("\n");
 
   const detailsSection =
@@ -125,20 +126,18 @@ ${detailRows}
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    @media only screen and (max-width: 600px) {
-      .rd-list { display: table !important; width: 100% !important; }
-      .rd-row { display: table-row !important; }
-      .rd-label {
-        display: table-cell !important;
-        white-space: nowrap !important;
-        padding-right: 4px !important;
-        vertical-align: top !important;
-      }
-      .rd-gap { display: none !important; }
-      .rd-value {
-        display: table-cell !important;
-        vertical-align: top !important;
-      }
+    .rd-list { display: table !important; width: 100% !important; }
+    .rd-row { display: table-row !important; }
+    .rd-label {
+      display: table-cell !important;
+      white-space: nowrap !important;
+      padding-right: 4px !important;
+      vertical-align: top !important;
+    }
+    .rd-gap { display: none !important; }
+    .rd-value {
+      display: table-cell !important;
+      vertical-align: top !important;
     }
   </style>
 </head>
