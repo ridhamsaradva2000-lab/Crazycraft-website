@@ -18,8 +18,16 @@ import type {
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const SEND_ENDPOINT = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send";
 
-const REQUIRED_FROM_EMAIL = "sales@crazycraftglobal.com";
-const REQUIRED_FROM_NAME = "CrazyCraft Sales";
+const ALLOWED_SENDERS = [
+  { email: "sales@crazycraftglobal.com", name: "CrazyCraft Sales" },
+  { email: "ridham@crazycraftglobal.com", name: "Ridham Saradva" },
+] as const;
+
+function isAllowedSender(input: SalesEmailSendInput["from"]): boolean {
+  return ALLOWED_SENDERS.some(
+    (sender) => sender.email === input.email && sender.name === input.name
+  );
+}
 
 type TokenRefreshResult =
   | { ok: true; accessToken: string }
@@ -114,8 +122,8 @@ export class GmailSalesEmailProvider implements SalesEmailProvider {
   readonly isConfigured = true;
 
   async send(input: SalesEmailSendInput): Promise<SalesEmailSendResult> {
-    if (input.from.email !== REQUIRED_FROM_EMAIL || input.from.name !== REQUIRED_FROM_NAME) {
-      // Never silently allow another From identity.
+    if (!isAllowedSender(input.from)) {
+      // Never silently allow an unapproved From identity.
       return { ok: false, errorCode: "gmail_send_failed" };
     }
 
@@ -127,8 +135,8 @@ export class GmailSalesEmailProvider implements SalesEmailProvider {
     let mimeMessage;
     try {
       mimeMessage = buildMimeMessage({
-        fromEmail: REQUIRED_FROM_EMAIL,
-        fromName: REQUIRED_FROM_NAME,
+        fromEmail: input.from.email,
+        fromName: input.from.name,
         to: input.to,
         subject: input.subject,
         textBody: input.textBody,

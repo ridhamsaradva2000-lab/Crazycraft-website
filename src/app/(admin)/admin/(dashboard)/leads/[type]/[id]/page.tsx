@@ -9,6 +9,8 @@ import { ActivityTimelineSection } from "@/components/crm/Timeline";
 import { LocalDateTime } from "@/components/crm/LocalDateTime";
 import { AddNoteForm } from "@/components/crm/AddNoteForm";
 import { LeadUpdateForm } from "@/components/crm/LeadUpdateForm";
+import { EmailConversation, type EmailConversationMessage } from "@/components/crm/EmailConversation";
+import { ReplyComposeForm } from "@/components/crm/ReplyComposeForm";
 import { LEAD_STATUS_LABELS } from "@/lib/validations/crm";
 
 const uuidSchema = z.string().uuid();
@@ -84,6 +86,79 @@ export default async function LeadDetailPage({
       getActivityLog({ inquiryId: id }),
     ]);
 
+    // ---- Email conversation + messages (inquiry leads only). Uses the
+    // SAME authenticated, RLS-respecting client as every other query in
+    // this file -- never a service-role/admin client. A conversation
+    // load error must not break the rest of this page; it is logged
+    // safely and surfaced only as a disabled reply form with a generic
+    // reason, never a raw error. Genuinely no conversation existing yet
+    // is not an error -- nothing is fabricated either way. Threading
+    // safety for the actual send remains entirely sendManualReply.ts's
+    // responsibility; nothing here reproduces that validation. ----
+    const { data: emailConversationRow, error: emailConversationError } = await supabase
+      .from("email_conversations")
+      .select("id, subject, buyer_email, provider_thread_id")
+      .eq("inquiry_id", id)
+      .maybeSingle();
+
+    let emailLoadFailed = false;
+    let emailMessages: EmailConversationMessage[] = [];
+    let emailMessagesLoadFailed = false;
+
+    if (emailConversationError) {
+      logSafeDiagnostic("adminLeadDetail.loadEmailConversation", emailConversationError);
+      emailLoadFailed = true;
+    }
+
+    // Only proceed to load messages when the conversation query itself
+    // succeeded -- deliberately does NOT assume Supabase's data/error
+    // fields are always mutually exclusive; emailLoadFailed is checked
+    // explicitly rather than inferred from emailConversationRow alone.
+    if (!emailLoadFailed && emailConversationRow) {
+      const { data: emailMessageRows, error: emailMessagesError } = await supabase
+        .from("email_messages")
+        .select("id, direction, purpose, status, sender_name, sender_email, recipient_email, subject, text_body, sent_at, created_at")
+        .eq("conversation_id", emailConversationRow.id)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true });
+
+      if (emailMessagesError) {
+        logSafeDiagnostic("adminLeadDetail.loadEmailMessages", emailMessagesError);
+        emailMessagesLoadFailed = true;
+      } else {
+        emailMessages = (emailMessageRows ?? []).map((row) => ({
+          id: row.id,
+          direction: row.direction as EmailConversationMessage["direction"],
+          purpose: row.purpose as EmailConversationMessage["purpose"],
+          status: row.status as EmailConversationMessage["status"],
+          senderName: row.sender_name,
+          senderEmail: row.sender_email,
+          recipientEmail: row.recipient_email,
+          subject: row.subject,
+          textBody: row.text_body,
+          sentAt: row.sent_at,
+          createdAt: row.created_at,
+        }));
+      }
+    }
+
+    const showEmailLoadError = emailLoadFailed || (emailConversationRow !== null && emailMessagesLoadFailed);
+    // canReplyByEmail explicitly proves ALL THREE conditions -- conversation
+    // load succeeded, a conversation exists, AND message load succeeded --
+    // rather than relying on any assumption about Supabase's data/error
+    // mutual exclusivity. Fail-closed by construction.
+    const canReplyByEmail =
+      !emailLoadFailed &&
+      emailConversationRow !== null &&
+      !emailMessagesLoadFailed;
+    const emailDisabledReason = emailLoadFailed
+      ? "Could not load the email conversation. Please try again."
+      : !emailConversationRow
+        ? "Email conversation is not available for this inquiry yet."
+        : emailMessagesLoadFailed
+          ? "Could not load prior email messages. Please try again."
+          : null;
+
     return (
       <Container className="py-10">
         <div className="mb-6 flex items-center justify-between">
@@ -145,6 +220,29 @@ export default async function LeadDetailPage({
                   <p className="mt-1 font-body text-sm text-ink">{inquiry.message}</p>
                 </div>
               )}
+            </div>
+
+            {showEmailLoadError && (
+              <div className="mt-6 rounded-lg border border-paper-muted bg-white p-6">
+                <h2 className="font-display text-lg text-brand-900">Email Conversation</h2>
+                <p className="mt-2 font-body text-sm text-clay">
+                  Could not load the email conversation. Please try again.
+                </p>
+              </div>
+            )}
+
+            {canReplyByEmail && emailConversationRow && (
+              <div className="mt-6">
+                <EmailConversation
+                  subject={emailConversationRow.subject}
+                  buyerEmail={emailConversationRow.buyer_email}
+                  messages={emailMessages}
+                />
+              </div>
+            )}
+
+            <div className="mt-6">
+              <ReplyComposeForm inquiryId={id} canReply={canReplyByEmail} disabledReason={emailDisabledReason} />
             </div>
 
             <div className="mt-6 rounded-lg border border-paper-muted bg-white p-6">

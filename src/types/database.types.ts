@@ -427,6 +427,7 @@ export type Database = {
       }
       email_messages: {
         Row: {
+          client_dedupe_key: string | null
           conversation_id: string
           created_at: string
           direction: string
@@ -450,6 +451,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          client_dedupe_key?: string | null
           conversation_id: string
           created_at?: string
           direction: string
@@ -473,6 +475,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          client_dedupe_key?: string | null
           conversation_id?: string
           created_at?: string
           direction?: string
