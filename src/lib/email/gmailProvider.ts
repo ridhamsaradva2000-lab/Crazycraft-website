@@ -29,6 +29,34 @@ function isAllowedSender(input: SalesEmailSendInput["from"]): boolean {
   );
 }
 
+/**
+ * Pure, side-effect-free extraction of the "Message-ID" header from a
+ * Gmail API response's payload.headers array. Case-insensitive header
+ * name match (Gmail/RFC 5322 header names are not guaranteed to arrive
+ * in any particular casing). Returns null for anything missing,
+ * malformed, or empty/whitespace-only -- never throws, never fabricates
+ * a value. This is the ONLY source of a response-derived Message-ID
+ * candidate used by this provider; the locally-generated MIME candidate
+ * (mimeMessage.rfcMessageId) is never returned here under any
+ * circumstance, since real staging evidence proved Gmail can silently
+ * replace it on delivery. NOTE: a value extracted here reflects what
+ * Gmail's send response itself reports -- it is NOT yet independently
+ * confirmed to match what the recipient actually received until a
+ * staging E2E test compares it against the recipient's own "Show
+ * Original" Message-ID.
+ */
+function extractMessageIdFromHeaders(
+  headers: Array<{ name?: string; value?: string }> | undefined
+): string | null {
+  if (!Array.isArray(headers)) return null;
+  const header = headers.find(
+    (h) => typeof h?.name === "string" && h.name.toLowerCase() === "message-id"
+  );
+  if (!header || typeof header.value !== "string") return null;
+  const trimmed = header.value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 type TokenRefreshResult =
   | { ok: true; accessToken: string }
   | { ok: false; errorCode: SalesEmailProviderErrorCode };
@@ -191,12 +219,16 @@ export class GmailSalesEmailProvider implements SalesEmailProvider {
         return { ok: false, errorCode: "gmail_send_failed" };
       }
 
-      const parsed = data as { id: string; threadId?: string };
+      const parsed = data as {
+        id: string;
+        threadId?: string;
+        payload?: { headers?: Array<{ name?: string; value?: string }> };
+      };
       return {
         ok: true,
         providerMessageId: parsed.id,
         providerThreadId: typeof parsed.threadId === "string" ? parsed.threadId : null,
-        rfcMessageId: mimeMessage.rfcMessageId,
+        rfcMessageId: extractMessageIdFromHeaders(parsed.payload?.headers),
       };
     } catch {
       return { ok: false, errorCode: "unknown_provider_error" };
