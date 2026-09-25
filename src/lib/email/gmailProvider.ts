@@ -148,6 +148,7 @@ async function refreshAccessToken(): Promise<TokenRefreshResult> {
  */
 export class GmailSalesEmailProvider implements SalesEmailProvider {
   readonly isConfigured = true;
+  readonly threadingMode = "provider_thread_id" as const;
 
   async send(input: SalesEmailSendInput): Promise<SalesEmailSendResult> {
     if (!isAllowedSender(input.from)) {

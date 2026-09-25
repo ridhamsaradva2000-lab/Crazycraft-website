@@ -17,6 +17,19 @@ export type SalesEmailProviderErrorCode =
   | "gmail_rate_limited"
   | "unknown_provider_error";
 
+/**
+ * Threading capability of a given SalesEmailProvider implementation.
+ * "provider_thread_id" means the provider has a native, opaque
+ * thread-continuation mechanism (e.g. Gmail's threadId) that callers
+ * must supply on a reply. "rfc_headers" means the provider has no such
+ * mechanism -- threading is expressed entirely via standard RFC 5322
+ * In-Reply-To/References headers, and no provider-native thread
+ * identifier should ever be required or fabricated. This is a property
+ * of the PROVIDER, not something callers should infer from which
+ * concrete class they happen to hold.
+ */
+export type SalesEmailThreadingMode = "provider_thread_id" | "rfc_headers";
+
 export interface SalesEmailSendInput {
   from: { email: string; name: string };
   to: string;
@@ -48,6 +61,7 @@ export type SalesEmailSendResult = SalesEmailSendSuccess | SalesEmailSendFailure
 
 export interface SalesEmailProvider {
   readonly isConfigured: boolean;
+  readonly threadingMode: SalesEmailThreadingMode;
   send(input: SalesEmailSendInput): Promise<SalesEmailSendResult>;
 }
 
@@ -57,6 +71,7 @@ export interface SalesEmailProvider {
  */
 export class NotConfiguredSalesEmailProvider implements SalesEmailProvider {
   readonly isConfigured = false;
+  readonly threadingMode = "provider_thread_id" as const;
 
   async send(): Promise<SalesEmailSendResult> {
     return { ok: false, errorCode: "gmail_provider_not_configured" };
