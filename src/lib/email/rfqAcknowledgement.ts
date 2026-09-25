@@ -195,18 +195,31 @@ export async function sendRfqAcknowledgementForInquiry(inquiryId: string): Promi
     }
 
     const provider = getSalesEmailProvider();
-    const result = await provider.send({ from: SALES_SENDER, to: inquiry.email, subject, textBody, htmlBody });
+    const result = await provider.send({ from: SALES_SENDER, to: inquiry.email, subject, textBody, htmlBody, correlationId: claimedMessageId });
 
     if (result.ok) {
+      // CRITICAL: for an rfc_headers provider (e.g. Resend), rfc_message_id
+      // is deliberately OMITTED from this patch entirely -- never set to
+      // null. result.rfcMessageId is always null at this point for such a
+      // provider (the real value arrives later via a signed webhook, in a
+      // future stage); writing null here would silently clobber a
+      // webhook-written value if the webhook happened to race ahead of
+      // this update. For a provider_thread_id provider (Gmail), behavior
+      // is unchanged from before this stage.
+      const basePatch = {
+        status: "sent" as const,
+        sent_at: new Date().toISOString(),
+        provider_message_id: result.providerMessageId,
+        provider_thread_id: result.providerThreadId,
+      };
+      const updatePatch =
+        provider.threadingMode === "rfc_headers"
+          ? basePatch
+          : { ...basePatch, rfc_message_id: result.rfcMessageId };
+
       const { error: markSentError } = await admin
         .from("email_messages")
-        .update({
-          status: "sent",
-          sent_at: new Date().toISOString(),
-          provider_message_id: result.providerMessageId,
-          provider_thread_id: result.providerThreadId,
-          rfc_message_id: result.rfcMessageId,
-        })
+        .update(updatePatch)
         .eq("id", claimedMessageId);
       if (markSentError) {
         logSafeDiagnostic("sendRfqAcknowledgementForInquiry.markSent", markSentError);

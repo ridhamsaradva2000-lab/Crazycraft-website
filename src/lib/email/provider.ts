@@ -1,6 +1,7 @@
 import "server-only";
 import { isGmailProviderConfigured, salesEmailEnv } from "@/lib/email/env";
 import { GmailSalesEmailProvider } from "@/lib/email/gmailProvider";
+import { ResendSalesEmailProvider } from "@/lib/email/resendProvider";
 
 /**
  * Bounded provider-failure contract. error_message in email_messages
@@ -43,6 +44,10 @@ export interface SalesEmailSendInput {
   // boundary correctly now; unused/omitted for the initial
   // acknowledgement call, since no thread exists yet at that point.
   providerThreadId?: string;
+  // Caller-supplied opaque correlation identifier. Providers may use it
+  // for idempotency and/or provider-side correlation without knowing
+  // its storage origin.
+  correlationId: string;
 }
 
 export interface SalesEmailSendSuccess {
@@ -104,17 +109,21 @@ export class NotConfiguredSalesEmailProvider implements SalesEmailProvider {
  * the not-configured provider. This is exactly the pre-C4 behavior,
  * unchanged.
  *
- * SALES_EMAIL_PROVIDER="resend": returns a bounded, explicit fail-closed
- * placeholder (threadingMode "rfc_headers", errorCode
- * "unknown_provider_error"). isGmailProviderConfigured is never
- * consulted in this branch -- this is a structural guarantee, not a
- * convention, that explicit Resend selection can NEVER silently fall
- * back to Gmail, even when Gmail credentials are fully configured. A
- * real Resend-backed provider replaces this placeholder in a later
- * stage; the root Resend API key is deliberately not read here yet.
+ * SALES_EMAIL_PROVIDER="resend": returns the real Resend-backed provider
+ * when salesEmailEnv.RESEND_ROOT_API_KEY is present, otherwise a
+ * bounded, explicit fail-closed placeholder (threadingMode
+ * "rfc_headers", errorCode "unknown_provider_error"). Gmail
+ * configuration (isGmailProviderConfigured) is never consulted in this
+ * branch under any circumstance -- this is a structural guarantee, not
+ * a convention, that explicit Resend selection can NEVER silently fall
+ * back to Gmail, whether or not the root key is present and whether or
+ * not Gmail credentials are fully configured.
  */
 export function getSalesEmailProvider(): SalesEmailProvider {
   if (salesEmailEnv.SALES_EMAIL_PROVIDER === "resend") {
+    if (salesEmailEnv.RESEND_ROOT_API_KEY) {
+      return new ResendSalesEmailProvider(salesEmailEnv.RESEND_ROOT_API_KEY);
+    }
     return new NotConfiguredSalesEmailProvider("rfc_headers", "unknown_provider_error");
   }
 

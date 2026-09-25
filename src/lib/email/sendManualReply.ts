@@ -413,6 +413,7 @@ export async function sendManualReply(input: ManualReplyInput): Promise<SendManu
       inReplyTo,
       references,
       providerThreadId: requiredThreadId,
+      correlationId: messageId,
     });
 
     if (!result.ok) {
