@@ -1,5 +1,5 @@
 import "server-only";
-import { isGmailProviderConfigured } from "@/lib/email/env";
+import { isGmailProviderConfigured, salesEmailEnv } from "@/lib/email/env";
 import { GmailSalesEmailProvider } from "@/lib/email/gmailProvider";
 
 /**
@@ -68,23 +68,56 @@ export interface SalesEmailProvider {
 /**
  * Always-unconfigured provider. NEVER pretends a send succeeded. No
  * Gmail SDK dependency is used or required.
+ *
+ * Generalized in Stage 7AG-II C4 to accept an optional threadingMode
+ * and errorCode, so it can also serve as the temporary explicit-Resend
+ * fail-closed placeholder (see getSalesEmailProvider() below) without a
+ * second class. The existing no-argument call site is unaffected: both
+ * parameters default to exactly the prior hardcoded values, so that
+ * behavior is byte-for-byte identical to before this change.
  */
 export class NotConfiguredSalesEmailProvider implements SalesEmailProvider {
   readonly isConfigured = false;
-  readonly threadingMode = "provider_thread_id" as const;
+  readonly threadingMode: SalesEmailThreadingMode;
+  private readonly errorCode: SalesEmailProviderErrorCode;
+
+  constructor(
+    threadingMode: SalesEmailThreadingMode = "provider_thread_id",
+    errorCode: SalesEmailProviderErrorCode = "gmail_provider_not_configured"
+  ) {
+    this.threadingMode = threadingMode;
+    this.errorCode = errorCode;
+  }
 
   async send(): Promise<SalesEmailSendResult> {
-    return { ok: false, errorCode: "gmail_provider_not_configured" };
+    return { ok: false, errorCode: this.errorCode };
   }
 }
 
 /**
- * Returns the real Gmail-backed provider only when all 3 Gmail env vars
- * are present (isGmailProviderConfigured) -- partial configuration is
- * deliberately treated as NOT configured, never presented as ready.
- * Otherwise returns the not-configured provider, exactly as before.
+ * Provider selection.
+ *
+ * SALES_EMAIL_PROVIDER unset or "gmail": returns the real Gmail-backed
+ * provider only when all 3 Gmail env vars are present
+ * (isGmailProviderConfigured) -- partial configuration is deliberately
+ * treated as NOT configured, never presented as ready. Otherwise returns
+ * the not-configured provider. This is exactly the pre-C4 behavior,
+ * unchanged.
+ *
+ * SALES_EMAIL_PROVIDER="resend": returns a bounded, explicit fail-closed
+ * placeholder (threadingMode "rfc_headers", errorCode
+ * "unknown_provider_error"). isGmailProviderConfigured is never
+ * consulted in this branch -- this is a structural guarantee, not a
+ * convention, that explicit Resend selection can NEVER silently fall
+ * back to Gmail, even when Gmail credentials are fully configured. A
+ * real Resend-backed provider replaces this placeholder in a later
+ * stage; the root Resend API key is deliberately not read here yet.
  */
 export function getSalesEmailProvider(): SalesEmailProvider {
+  if (salesEmailEnv.SALES_EMAIL_PROVIDER === "resend") {
+    return new NotConfiguredSalesEmailProvider("rfc_headers", "unknown_provider_error");
+  }
+
   if (isGmailProviderConfigured) {
     return new GmailSalesEmailProvider();
   }
