@@ -22,9 +22,9 @@ import { logSafeDiagnostic } from "@/lib/diagnostics/safeLog.server";
  * matches must never mask an integrity conflict discovered on a later
  * redelivery.
  *
- * Uses this installed SDK's actual header names -- webhook-id,
- * webhook-timestamp, webhook-signature -- which differ from the
- * svix-prefixed names used by some other webhook providers.
+ * Resend sends Svix signature headers: svix-id, svix-timestamp,
+ * and svix-signature. The SDK verify() call receives those values
+ * as id/timestamp/signature.
  */
 
 const correlationIdSchema = z.string().uuid();
@@ -36,10 +36,11 @@ export async function POST(request: Request): Promise<NextResponse> {
   // byte-sensitive and must run against the untouched raw text. ----
   const rawBody = await request.text();
 
-  // ---- 2. Read the exact headers this installed SDK/webhook uses. ----
-  const headerId = request.headers.get("webhook-id");
-  const headerTimestamp = request.headers.get("webhook-timestamp");
-  const headerSignature = request.headers.get("webhook-signature");
+  // Resend sends Svix signature headers on the incoming HTTP request.
+  // The SDK verify() call receives those values as id/timestamp/signature.
+  const headerId = request.headers.get("svix-id");
+  const headerTimestamp = request.headers.get("svix-timestamp");
+  const headerSignature = request.headers.get("svix-signature");
 
   // ---- 3. Fail closed on missing server configuration BEFORE any DB
   // client is created or any DB access occurs. ----
