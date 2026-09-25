@@ -12,9 +12,10 @@ import { manualReplySchema, type ManualReplyInput } from "@/lib/validations/emai
 /**
  * Hardcoded, server-side-only sender for every manual admin reply. The
  * client/UI never chooses or overrides this -- it is not a parameter
- * anywhere in this function's signature. Must match one of
- * gmailProvider.ts's ALLOWED_SENDERS entries EXACTLY (email + name) or
- * the provider will reject the send with gmail_send_failed.
+ * anywhere in this function's signature. Must match one of the active
+ * provider's own allowed-sender entries EXACTLY (email + name) --
+ * gmailProvider.ts's ALLOWED_SENDERS for Gmail, resendProvider.ts's own
+ * allowlist for Resend -- or the provider will reject the send.
  */
 const MANUAL_REPLY_SENDER = { email: "ridham@crazycraftglobal.com", name: "Ridham Saradva" } as const;
 
@@ -25,12 +26,12 @@ export type SendManualReplyFailureReason =
   | "thread_not_available"
   | "threading_metadata_not_available"
   | "thread_history_inconsistent"
-  | "provider_send_not_yet_supported"
   | "message_lookup_failed"
   | "message_insert_failed"
   | "dedupe_key_conversation_mismatch"
   | "prior_outbound_message_unresolved"
   | "provider_failure_recording_failed"
+  | "provider_send_outcome_uncertain"
   | "unexpected_error";
 
 /**
@@ -38,13 +39,21 @@ export type SendManualReplyFailureReason =
  * "sent_recording_failed" are all real sends (the email genuinely went
  * out) that nonetheless require distinct, non-retryable handling from a
  * plain "sent" -- a future caller must NEVER treat any of these as
- * license to resend. "failed" (this attempt's provider-level failure)
- * and "operational_error" (a system/database failure distinct from the
- * provider) remain separate variants for the same reason as before: they
- * warrant different UI messaging.
+ * license to resend. "failed" remains the existing recorded
+ * provider-failure state produced by the existing failure-recording
+ * path and follows the existing previous_attempt_failed semantics
+ * (retryable with a fresh dedupe key) -- this is unchanged from before
+ * this stage, including for Gmail, where a thrown exception and an
+ * explicit provider rejection can still map to the same bounded error
+ * code. "operational_error" covers fail-closed operational states more
+ * broadly: system/database failures distinct from the provider, AND a
+ * configured-provider (Resend) send outcome whose final send state
+ * could not safely be determined (provider_send_outcome_uncertain) --
+ * that specific case must NEVER be treated as license for an automatic
+ * resend.
  */
 export type SendManualReplyResult =
-  | { status: "sent"; messageId: string; providerMessageId: string; providerThreadId: string }
+  | { status: "sent"; messageId: string; providerMessageId: string; providerThreadId: string | null }
   | { status: "sent_thread_mismatch"; messageId: string; providerMessageId: string; providerThreadId: string }
   | { status: "sent_threading_metadata_missing"; messageId: string; providerMessageId: string; providerThreadId: string }
   | { status: "sent_recording_failed"; messageId: string; providerMessageId: string }
@@ -115,11 +124,16 @@ function isUsableIdentifier(value: string | null): value is string {
 
 /**
  * Sends one manual admin reply (quotation/negotiation/follow_up/general)
- * into an EXISTING RFQ email conversation, continuing the SAME Gmail
- * thread -- never as a new effective root. Never throws for an expected
- * business-state outcome -- every known case is returned as a typed
- * SendManualReplyResult. An unexpected exception is caught, logged, and
- * returned as a bounded operational_error rather than propagated.
+ * into an EXISTING RFQ email conversation, continuing the existing email
+ * thread -- never as a new effective root. Gmail (threadingMode
+ * "provider_thread_id") continues the thread via its own native thread
+ * ID plus RFC ancestry as a consistency check; Resend (threadingMode
+ * "rfc_headers") continues it via RFC In-Reply-To/References only, with
+ * no provider-native thread concept involved. Never throws for an
+ * expected business-state outcome -- every known case is returned as a
+ * typed SendManualReplyResult. An unexpected exception is caught,
+ * logged, and returned as a bounded operational_error rather than
+ * propagated.
  *
  * `input` is declared as ManualReplyInput for caller ergonomics, but its
  * TypeScript type provides no RUNTIME guarantee -- this function
@@ -150,50 +164,52 @@ export async function sendManualReply(input: ManualReplyInput): Promise<SendManu
     const conversation = lookup.conversation;
 
     // ---- Consult the active provider's threading capability BEFORE
-    // any Gmail-specific ancestry validation runs. An explicit
-    // "rfc_headers" provider (Resend, once implemented) has no
-    // provider_thread_id concept at all -- the checks below this point
-    // are Gmail-specific by design and must never execute for such a
-    // provider. This is a deliberate, temporary C2 scaffold: rfc_headers
-    // mode is not yet send-capable, so it hard-stops here -- BEFORE any
-    // pending row is inserted and BEFORE provider.send() is ever
-    // reached. Using one of the existing Gmail-specific reasons here
-    // would misrepresent what actually happened (nothing about Gmail
-    // threading failed -- this provider simply isn't send-capable yet),
-    // so a distinct, honestly-named reason is used instead. ----
+    // any provider-specific ancestry validation runs. Gmail
+    // (threadingMode "provider_thread_id") uses its own native thread
+    // ID plus RFC ancestry as a consistency check; Resend (threadingMode
+    // "rfc_headers") has no provider-native thread concept at all --
+    // threading is expressed entirely via RFC In-Reply-To/References
+    // headers, built from prior sent messages' own canonical
+    // rfc_message_id values, never fabricated. ----
     const provider = getSalesEmailProvider();
+    const messageProvider = provider.threadingMode === "rfc_headers" ? "resend" : "gmail";
 
+    // ---- Thread-identity precondition, branched by provider mode.
+    // Gmail: an existing, USABLE (non-empty after trim) Gmail thread ID
+    // must already be established -- never send with providerThreadId
+    // omitted and hope Gmail infers the thread. Resend: the conversation
+    // must carry EXACT NULL provider_thread_id -- not merely "no usable
+    // value" -- an empty or whitespace-only string is a distinct,
+    // invalid state the nullable text column does not itself prevent,
+    // and must be rejected just as firmly as a real Gmail thread ID
+    // would be. A non-null value of any kind here means this
+    // conversation's history belongs to a different transport, and
+    // RFC-only threading must never proceed on top of that. ----
+    let requiredThreadId: string | null = null;
     if (provider.threadingMode === "rfc_headers") {
-      return {
-        status: "operational_error",
-        reason: "provider_send_not_yet_supported",
-      };
+      if (conversation.provider_thread_id !== null) {
+        return { status: "operational_error", reason: "thread_history_inconsistent" };
+      }
+    } else {
+      if (!isUsableIdentifier(conversation.provider_thread_id)) {
+        return { status: "operational_error", reason: "thread_not_available" };
+      }
+      requiredThreadId = conversation.provider_thread_id.trim();
     }
 
-    // ---- Same-thread precondition 1: an existing, USABLE (non-empty
-    // after trim) Gmail thread ID must already be established. Never
-    // send with providerThreadId omitted and hope Gmail infers the
-    // thread; never send a whitespace-only thread ID to Gmail. ----
-    if (!isUsableIdentifier(conversation.provider_thread_id)) {
-      return { status: "operational_error", reason: "thread_not_available" };
-    }
-    const requiredThreadId = conversation.provider_thread_id.trim();
-
-    // ---- Same-thread precondition 2: EVERY prior sent outbound message
-    // in this conversation must have BOTH a usable RFC Message-ID AND a
-    // usable provider_thread_id that matches requiredThreadId -- not
-    // just the most recent one. A single gap or divergence anywhere in
-    // the ancestry (e.g. an earlier manual reply that sent successfully
-    // but recorded a null/blank rfc_message_id, or landed in a
-    // genuinely different Gmail thread after a sent_thread_mismatch) is
-    // a hard stop: this function must never silently skip that row,
-    // chain off an older message instead, or assume the conversation's
-    // current thread is still the one every prior message actually
-    // landed in. No ID is ever fabricated, no row is ever skipped, and
-    // no thread is ever chosen as a "winner". ----
+    // ---- One shared ordered prior-message query for both threading
+    // modes -- filters, ordering, and the requirement that EVERY prior
+    // sent outbound message (not just the most recent) validate cleanly
+    // are unchanged from the original Gmail-only design. A single gap
+    // or divergence anywhere in the ancestry is a hard stop: this
+    // function must never silently skip a row, chain off an older
+    // message instead, or fabricate any identifier. `provider` is now
+    // selected alongside the existing columns so the Resend branch
+    // below can verify every prior row was actually sent through the
+    // same transport. ----
     const { data: priorMessages, error: priorMessagesError } = await admin
       .from("email_messages")
-      .select("id, rfc_message_id, provider_thread_id, sent_at, created_at")
+      .select("id, rfc_message_id, provider_thread_id, provider, sent_at, created_at")
       .eq("conversation_id", conversation.id)
       .eq("direction", "outbound")
       .eq("status", "sent")
@@ -213,17 +229,35 @@ export async function sendManualReply(input: ManualReplyInput): Promise<SendManu
     }
 
     const priorRfcMessageIds: string[] = [];
-    for (const message of priorSentOutboundMessages) {
-      if (!isUsableIdentifier(message.rfc_message_id)) {
-        return { status: "operational_error", reason: "threading_metadata_not_available" };
+    if (provider.threadingMode === "rfc_headers") {
+      for (const message of priorSentOutboundMessages) {
+        if (message.provider !== "resend") {
+          return { status: "operational_error", reason: "thread_history_inconsistent" };
+        }
+        // EXACT NULL required -- not isUsableIdentifier() -- since an
+        // empty or whitespace-only provider_thread_id is itself an
+        // inconsistent, invalid state for an RFC-only prior message.
+        if (message.provider_thread_id !== null) {
+          return { status: "operational_error", reason: "thread_history_inconsistent" };
+        }
+        if (!isUsableIdentifier(message.rfc_message_id)) {
+          return { status: "operational_error", reason: "threading_metadata_not_available" };
+        }
+        priorRfcMessageIds.push(message.rfc_message_id.trim());
       }
-      if (
-        !isUsableIdentifier(message.provider_thread_id) ||
-        message.provider_thread_id.trim() !== requiredThreadId
-      ) {
-        return { status: "operational_error", reason: "thread_history_inconsistent" };
+    } else {
+      for (const message of priorSentOutboundMessages) {
+        if (!isUsableIdentifier(message.rfc_message_id)) {
+          return { status: "operational_error", reason: "threading_metadata_not_available" };
+        }
+        if (
+          !isUsableIdentifier(message.provider_thread_id) ||
+          message.provider_thread_id.trim() !== requiredThreadId
+        ) {
+          return { status: "operational_error", reason: "thread_history_inconsistent" };
+        }
+        priorRfcMessageIds.push(message.rfc_message_id.trim());
       }
-      priorRfcMessageIds.push(message.rfc_message_id.trim());
     }
 
     const lastPriorMessage = priorRfcMessageIds[priorRfcMessageIds.length - 1];
@@ -303,6 +337,7 @@ export async function sendManualReply(input: ManualReplyInput): Promise<SendManu
         text_body: data.textBody,
         html_body: htmlBody,
         client_dedupe_key: data.clientDedupeKey,
+        provider: messageProvider,
         provider_thread_id: requiredThreadId,
         in_reply_to: inReplyTo,
         references_header: references,
@@ -400,10 +435,12 @@ export async function sendManualReply(input: ManualReplyInput): Promise<SendManu
     }
     const messageId = inserted.id;
 
-    // ---- providerThreadId is ALWAYS supplied -- never omitted -- since
-    // requiredThreadId was proven non-null above. The active provider
-    // was already obtained and threading-mode-gated earlier, before any
-    // Gmail-specific ancestry validation ran; reused here unchanged. ----
+    // ---- providerThreadId is supplied only for a provider_thread_id
+    // (Gmail) provider, where requiredThreadId is guaranteed non-null by
+    // the branch above -- never omitted there, and never fabricated for
+    // the other case. For an rfc_headers (Resend) provider, the property
+    // is omitted entirely rather than passed as an invented value; the
+    // provider contract already treats it as optional. ----
     const result = await provider.send({
       from: MANUAL_REPLY_SENDER,
       to: recipientEmail,
@@ -412,21 +449,40 @@ export async function sendManualReply(input: ManualReplyInput): Promise<SendManu
       htmlBody,
       inReplyTo,
       references,
-      providerThreadId: requiredThreadId,
       correlationId: messageId,
+      ...(requiredThreadId !== null ? { providerThreadId: requiredThreadId } : {}),
     });
 
     if (!result.ok) {
-      // ---- Provider explicitly confirmed no send occurred. Prove the
-      // failed-state recording actually affected the expected pending
-      // row (id match AND status='pending', via select+maybeSingle) --
-      // the same discipline already used for the successful-send
-      // recording below. If recording is unproven (a DB error, or zero
-      // rows matched), the row's true persisted state is unknown -- it
-      // may still structurally read as 'pending' and occupy the
-      // one-pending-outbound-per-conversation index slot, which
-      // correctly blocks a naive retry at the INSERT level regardless.
-      // But this function's RETURNED result must not claim
+      // ---- A CONFIGURED rfc_headers (Resend) provider maps BOTH a
+      // provider-returned error AND a thrown network/SDK exception to
+      // the same bounded unknown_provider_error code, so `!result.ok`
+      // here cannot distinguish "Resend explicitly rejected this" from
+      // "the response was lost after Resend may already have accepted
+      // it". Marking the row failed (implicitly permitting a future
+      // fresh-key retry) would risk a real duplicate send if the
+      // original request actually succeeded. This case is left
+      // genuinely unresolved: the row stays 'pending' (blocking any
+      // further attempt via the existing one-pending-outbound
+      // constraint), nothing is marked failed, and the signed C6
+      // webhook may still arrive and enrich rfc_message_id if Resend
+      // did in fact accept the send. ----
+      if (provider.threadingMode === "rfc_headers" && provider.isConfigured) {
+        logSafeDiagnostic("sendManualReply.providerSendOutcomeUncertain", { code: "provider_send_outcome_uncertain" });
+        return { status: "operational_error", reason: "provider_send_outcome_uncertain" };
+      }
+
+      // ---- Provider explicitly confirmed no send occurred (Gmail, or
+      // an unconfigured rfc_headers placeholder that never attempted a
+      // network call at all). Prove the failed-state recording actually
+      // affected the expected pending row (id match AND status='pending',
+      // via select+maybeSingle) -- the same discipline already used for
+      // the successful-send recording below. If recording is unproven (a
+      // DB error, or zero rows matched), the row's true persisted state
+      // is unknown -- it may still structurally read as 'pending' and
+      // occupy the one-pending-outbound-per-conversation index slot,
+      // which correctly blocks a naive retry at the INSERT level
+      // regardless. But this function's RETURNED result must not claim
       // retryable:true while that state is unresolved -- a fresh-key
       // retry is only safe once 'failed' is durably, provably recorded. ----
       const { data: failedRow, error: markFailedError } = await admin
@@ -445,16 +501,66 @@ export async function sendManualReply(input: ManualReplyInput): Promise<SendManu
       return { status: "failed", messageId, errorCode: result.errorCode };
     }
 
-    // ---- Success. The email has genuinely been sent by this point --
-    // every branch below returns a non-retryable, real-send outcome.
+    // ---- Success -- the email has genuinely been sent by this point.
+    // Gmail (provider_thread_id) and Resend (rfc_headers) have entirely
+    // different, non-overlapping success paths below: Gmail's own
+    // returned-thread mismatch detection, RFC normalization, and
+    // syncConversationThreadId call all remain Gmail-specific concepts
+    // that never apply to Resend, whose canonical RFC Message-ID arrives
+    // later via the C6 webhook rather than in this response. ----
+    if (provider.threadingMode === "rfc_headers") {
+      // ---- Resend success. rfc_message_id is deliberately OMITTED from
+      // this patch entirely -- never set to null -- because the signed
+      // C6 webhook may already have written the real value, or may
+      // still be in flight; this local update must never be able to
+      // clobber it. provider_thread_id is likewise omitted, never
+      // fabricated -- Resend has no such concept. ----
+      const { data: updatedRow, error: markSentError } = await admin
+        .from("email_messages")
+        .update({
+          status: "sent",
+          sent_at: new Date().toISOString(),
+          provider_message_id: result.providerMessageId,
+        })
+        .eq("id", messageId)
+        .eq("status", "pending")
+        .select("id")
+        .maybeSingle();
+
+      if (markSentError || !updatedRow) {
+        logSafeDiagnostic("sendManualReply.sentRecordingFailed", markSentError ?? { code: "no_row_updated" });
+        return { status: "sent_recording_failed", messageId, providerMessageId: result.providerMessageId };
+      }
+
+      return {
+        status: "sent",
+        messageId,
+        providerMessageId: result.providerMessageId,
+        providerThreadId: null,
+      };
+    }
+
+    // ---- Gmail success -- entirely unchanged from before this stage. ----
+    if (requiredThreadId === null) {
+      // Unreachable: this point is only reached when
+      // provider.threadingMode !== "rfc_headers" (the rfc_headers
+      // branch above always returns before reaching here), and
+      // requiredThreadId is always assigned a trimmed, non-null string
+      // in that case. Kept explicit so TypeScript's control-flow
+      // analysis narrows it to string for the rest of this branch,
+      // without an unchecked non-null assertion.
+      logSafeDiagnostic("sendManualReply.unexpectedMissingThreadId", { code: "unexpected_missing_thread_id" });
+      return { status: "operational_error", reason: "unexpected_error" };
+    }
+
     // Never erase the known thread ID if Gmail returns nothing usable;
     // if Gmail returns a DIFFERENT non-empty (after trim) thread ID,
     // that is a mismatch -- logged (without any thread ID value) and
     // prioritized over a missing RFC Message-ID if both occur together,
-    // since an explicit contradiction from Gmail is the more
-    // significant anomaly. A null/empty/whitespace-only returned thread
-    // ID is treated as "no usable value returned" -- NOT as a mismatch
-    // -- and falls back to the already-known requiredThreadId. ----
+    // since an explicit contradiction from Gmail is the more significant
+    // anomaly. A null/empty/whitespace-only returned thread ID is
+    // treated as "no usable value returned" -- NOT as a mismatch -- and
+    // falls back to the already-known requiredThreadId.
     const rawGmailReturnedThreadId = result.providerThreadId;
     const gmailReturnedThreadId = isUsableIdentifier(rawGmailReturnedThreadId)
       ? rawGmailReturnedThreadId.trim()

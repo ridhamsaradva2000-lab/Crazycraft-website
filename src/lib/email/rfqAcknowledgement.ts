@@ -131,6 +131,9 @@ export async function sendRfqAcknowledgementForInquiry(inquiryId: string): Promi
       return;
     }
 
+    const provider = getSalesEmailProvider();
+    const messageProvider = provider.threadingMode === "rfc_headers" ? "resend" : "gmail";
+
     let claimedMessageId: string | null = null;
 
     if (existingMessage) {
@@ -148,6 +151,7 @@ export async function sendRfqAcknowledgementForInquiry(inquiryId: string): Promi
           subject,
           text_body: textBody,
           html_body: htmlBody,
+          provider: messageProvider,
         })
         .eq("id", existingMessage.id)
         .eq("status", "failed")
@@ -176,6 +180,7 @@ export async function sendRfqAcknowledgementForInquiry(inquiryId: string): Promi
           subject,
           text_body: textBody,
           html_body: htmlBody,
+          provider: messageProvider,
         })
         .select("id")
         .maybeSingle();
@@ -194,7 +199,6 @@ export async function sendRfqAcknowledgementForInquiry(inquiryId: string): Promi
       claimedMessageId = inserted.id;
     }
 
-    const provider = getSalesEmailProvider();
     const result = await provider.send({ from: SALES_SENDER, to: inquiry.email, subject, textBody, htmlBody, correlationId: claimedMessageId });
 
     if (result.ok) {
@@ -231,6 +235,23 @@ export async function sendRfqAcknowledgementForInquiry(inquiryId: string): Promi
         await syncConversationThreadId(admin, conversation.id, result.providerThreadId);
       }
     } else {
+      // ---- A CONFIGURED rfc_headers (Resend) provider maps BOTH a
+      // provider-returned error AND a thrown network/SDK exception to
+      // the same bounded unknown_provider_error code, so `!result.ok`
+      // here cannot distinguish "Resend explicitly rejected this" from
+      // "the response was lost after Resend may already have accepted
+      // it". Marking the row failed would risk a future reclaim-and-
+      // resend of an email that was actually already sent. This case is
+      // left genuinely unresolved: the row stays 'pending' (the
+      // existing one-pending-outbound semantics preserve that state for
+      // later reconciliation), nothing is marked failed, and the signed
+      // C6 webhook may still arrive and enrich rfc_message_id if Resend
+      // did in fact accept the send. ----
+      if (provider.threadingMode === "rfc_headers" && provider.isConfigured) {
+        logSafeDiagnostic("sendRfqAcknowledgementForInquiry.providerSendOutcomeUncertain", { code: "provider_send_outcome_uncertain" });
+        return;
+      }
+
       const { error: markFailedError } = await admin
         .from("email_messages")
         .update({ status: "failed", error_message: result.errorCode })

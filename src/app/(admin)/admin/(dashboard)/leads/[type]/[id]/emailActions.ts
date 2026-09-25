@@ -71,6 +71,8 @@ function mapOperationalErrorReason(reason: SendManualReplyFailureReason): string
       return "Refresh and review the email conversation before trying again.";
     case "dedupe_key_conversation_mismatch":
       return "Refresh and review the email conversation before trying again.";
+    case "provider_send_outcome_uncertain":
+      return "Email send outcome is uncertain. Do not resend. Refresh and review the conversation.";
     case "unexpected_error":
       return "Refresh and review the email conversation before trying again.";
     default:
