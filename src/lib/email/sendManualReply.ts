@@ -25,6 +25,7 @@ export type SendManualReplyFailureReason =
   | "thread_not_available"
   | "threading_metadata_not_available"
   | "thread_history_inconsistent"
+  | "provider_send_not_yet_supported"
   | "message_lookup_failed"
   | "message_insert_failed"
   | "dedupe_key_conversation_mismatch"
@@ -147,6 +148,27 @@ export async function sendManualReply(input: ManualReplyInput): Promise<SendManu
       return { status: "operational_error", reason: "conversation_not_found" };
     }
     const conversation = lookup.conversation;
+
+    // ---- Consult the active provider's threading capability BEFORE
+    // any Gmail-specific ancestry validation runs. An explicit
+    // "rfc_headers" provider (Resend, once implemented) has no
+    // provider_thread_id concept at all -- the checks below this point
+    // are Gmail-specific by design and must never execute for such a
+    // provider. This is a deliberate, temporary C2 scaffold: rfc_headers
+    // mode is not yet send-capable, so it hard-stops here -- BEFORE any
+    // pending row is inserted and BEFORE provider.send() is ever
+    // reached. Using one of the existing Gmail-specific reasons here
+    // would misrepresent what actually happened (nothing about Gmail
+    // threading failed -- this provider simply isn't send-capable yet),
+    // so a distinct, honestly-named reason is used instead. ----
+    const provider = getSalesEmailProvider();
+
+    if (provider.threadingMode === "rfc_headers") {
+      return {
+        status: "operational_error",
+        reason: "provider_send_not_yet_supported",
+      };
+    }
 
     // ---- Same-thread precondition 1: an existing, USABLE (non-empty
     // after trim) Gmail thread ID must already be established. Never
@@ -378,10 +400,10 @@ export async function sendManualReply(input: ManualReplyInput): Promise<SendManu
     }
     const messageId = inserted.id;
 
-    // ---- Only reached once this invocation holds a verified, uniquely-
-    // claimed pending row. providerThreadId is ALWAYS supplied -- never
-    // omitted -- since requiredThreadId was proven non-null above. ----
-    const provider = getSalesEmailProvider();
+    // ---- providerThreadId is ALWAYS supplied -- never omitted -- since
+    // requiredThreadId was proven non-null above. The active provider
+    // was already obtained and threading-mode-gated earlier, before any
+    // Gmail-specific ancestry validation ran; reused here unchanged. ----
     const result = await provider.send({
       from: MANUAL_REPLY_SENDER,
       to: recipientEmail,
