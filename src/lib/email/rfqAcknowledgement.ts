@@ -86,17 +86,47 @@ export async function sendRfqAcknowledgementForInquiry(inquiryId: string): Promi
       return;
     }
 
-    const canonicalSubject = canonicalRfqSubject(conversation.rfq_reference);
-    if (conversation.subject !== canonicalSubject) {
-      const { error: subjectUpdateError } = await admin
-        .from("email_conversations")
-        .update({ subject: canonicalSubject })
-        .eq("id", conversation.id);
-      if (subjectUpdateError) {
-        logSafeDiagnostic("sendRfqAcknowledgementForInquiry.reconcileSubject", subjectUpdateError);
-        return;
+    // ---- Existing acknowledgement state is loaded FIRST, before any
+    // subject reconciliation, specifically so reconciliation can see
+    // whether this conversation's acknowledgement is already durably
+    // "sent" -- a historically-established subject must never be
+    // rewritten merely because canonicalRfqSubject() changed in a later
+    // deployment. ----
+    const { data: existingMessage, error: existingMessageError } = await admin
+      .from("email_messages")
+      .select("id, status")
+      .eq("conversation_id", conversation.id)
+      .eq("purpose", "acknowledgement")
+      .maybeSingle();
+
+    if (existingMessageError) {
+      logSafeDiagnostic("sendRfqAcknowledgementForInquiry.loadExistingMessage", existingMessageError);
+      return;
+    }
+
+    // ---- Reconcile email_conversations.subject to the current
+    // canonical subject ONLY when this conversation's acknowledgement
+    // has not already sent. No acknowledgement row yet, or a
+    // pending/failed one, has not yet established a historical subject
+    // -- reconciling it here is exactly the existing safe behavior. A
+    // conversation whose acknowledgement already sent has ALREADY
+    // established its real subject; this branch is skipped entirely for
+    // it, so its persisted subject is never touched again by this
+    // function, regardless of how canonicalRfqSubject() changes in the
+    // future. ----
+    if (existingMessage?.status !== "sent") {
+      const canonicalSubject = canonicalRfqSubject(conversation.rfq_reference);
+      if (conversation.subject !== canonicalSubject) {
+        const { error: subjectUpdateError } = await admin
+          .from("email_conversations")
+          .update({ subject: canonicalSubject })
+          .eq("id", conversation.id);
+        if (subjectUpdateError) {
+          logSafeDiagnostic("sendRfqAcknowledgementForInquiry.reconcileSubject", subjectUpdateError);
+          return;
+        }
+        conversation = { ...conversation, subject: canonicalSubject };
       }
-      conversation = { ...conversation, subject: canonicalSubject };
     }
 
     let productName: string | null = null;
@@ -118,18 +148,6 @@ export async function sendRfqAcknowledgementForInquiry(inquiryId: string): Promi
       inquiry,
       productName
     );
-
-    const { data: existingMessage, error: existingMessageError } = await admin
-      .from("email_messages")
-      .select("id, status")
-      .eq("conversation_id", conversation.id)
-      .eq("purpose", "acknowledgement")
-      .maybeSingle();
-
-    if (existingMessageError) {
-      logSafeDiagnostic("sendRfqAcknowledgementForInquiry.loadExistingMessage", existingMessageError);
-      return;
-    }
 
     const provider = getSalesEmailProvider();
     const messageProvider = provider.threadingMode === "rfc_headers" ? "resend" : "gmail";

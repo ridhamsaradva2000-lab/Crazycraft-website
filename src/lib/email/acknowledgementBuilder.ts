@@ -16,8 +16,7 @@ export interface RfqAcknowledgementContent {
  * email_conversations.subject, so the two can never drift.
  */
 export function canonicalRfqSubject(rfqReference: string): string {
-  void rfqReference;
-  return "We received your requirement";
+  return `[${rfqReference}] We received your requirement`;
 }
 
 interface AcknowledgementDetailEntry {

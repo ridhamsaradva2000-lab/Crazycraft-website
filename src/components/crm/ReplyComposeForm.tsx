@@ -80,9 +80,15 @@ function assertUnreachableOutcome(value: never): never {
  * distinguished from "the email may have already sent," so no automatic
  * or easy-looking path back to a resend is offered.
  *
- * Form fields (purpose, message text) are NEVER programmatically cleared
- * in any outcome, so an admin can always review exactly what was
- * submitted.
+ * The message text is cleared only after a confirmed send (sent /
+ * already_sent) -- purely so the compose box no longer shows a stale
+ * draft once that exact content is durably confirmed sent. Every other
+ * outcome -- including every failure and every ambiguous/uncertain
+ * outcome -- leaves the draft completely untouched, so an admin can
+ * always review exactly what was submitted. This does not change the
+ * permanent-lock lifecycle above: sent and already_sent still lock the
+ * form exactly as before, and the next legitimate reply still requires
+ * reloading the page for a fresh compose-form instance.
  */
 export function ReplyComposeForm({ inquiryId, canReply, disabledReason }: ReplyComposeFormProps) {
   const router = useRouter();
@@ -120,6 +126,7 @@ export function ReplyComposeForm({ inquiryId, canReply, disabledReason }: ReplyC
       case "sent": {
         setResultTone("success");
         setResultMessage("Email sent.");
+        setTextBody("");
         setIsPermanentlyLocked(true);
         router.refresh();
         break;
@@ -127,6 +134,7 @@ export function ReplyComposeForm({ inquiryId, canReply, disabledReason }: ReplyC
       case "already_sent": {
         setResultTone("success");
         setResultMessage("This email was already sent.");
+        setTextBody("");
         setIsPermanentlyLocked(true);
         router.refresh();
         break;

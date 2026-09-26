@@ -5,7 +5,6 @@ import {
   loadConversationByInquiryId,
   syncConversationThreadId,
 } from "@/lib/email/conversationHelpers";
-import { canonicalRfqSubject } from "@/lib/email/acknowledgementBuilder";
 import { getSalesEmailProvider, type SalesEmailProviderErrorCode } from "@/lib/email/provider";
 import { manualReplySchema, type ManualReplyInput } from "@/lib/validations/email";
 
@@ -270,9 +269,14 @@ export async function sendManualReply(input: ManualReplyInput): Promise<SendManu
     const inReplyTo = lastPriorMessage;
     const references = priorRfcMessageIds.join(" ");
 
-    // ---- Same canonical subject already established by the
-    // acknowledgement path -- never invented here. ----
-    const subject = canonicalRfqSubject(conversation.rfq_reference);
+    // ---- Reuse the conversation's own persisted subject exactly --
+    // never reconstruct it from rfq_reference. canonicalRfqSubject() is
+    // only ever called when an acknowledgement establishes or
+    // reconciles a conversation's subject; a manual reply must send
+    // under whatever subject that conversation actually carries today,
+    // whether that's the current bracketed format for a new RFQ or an
+    // older, already-persisted subject for a historical one. ----
+    const subject = conversation.subject;
     const recipientEmail = conversation.buyer_email;
     const htmlBody = buildManualReplyHtmlBody(data.textBody);
 
