@@ -16,7 +16,9 @@ export interface RfqAcknowledgementContent {
  * email_conversations.subject, so the two can never drift.
  */
 export function canonicalRfqSubject(rfqReference: string): string {
-  return `[${rfqReference}] We received your requirement`;
+  const match = /^RFQ-\d{4}-(\d+)$/.exec(rfqReference);
+  const sequenceSuffix = match?.[1] ?? (rfqReference || "unknown");
+  return `We received your requirement \u00B7 ${sequenceSuffix}`;
 }
 
 interface AcknowledgementDetailEntry {
