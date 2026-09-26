@@ -109,17 +109,17 @@ function buildHtmlBody(
   const detailRows = detailEntries
     .map((entry, index) => {
       const isLastRow = index === detailEntries.length - 1;
-      const rowMarginBottom = isLastRow ? "0" : "4px";
-      return `<div style="margin: 0 0 ${rowMarginBottom} 0;">&bull; <strong>${escapeHtml(entry.label)}:</strong> ${escapeHtml(entry.value)}</div>`;
+      const rowPaddingBottom = isLastRow ? "0" : "4px";
+      return `<tr><td width="120" style="width: 120px; padding: 0 8px ${rowPaddingBottom} 0; white-space: nowrap; vertical-align: top; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">&bull; <strong>${escapeHtml(entry.label)}:</strong></td><td style="padding: 0 0 ${rowPaddingBottom} 0; vertical-align: top; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">${escapeHtml(entry.value)}</td></tr>`;
     })
     .join("\n");
 
   const detailsSection =
     detailEntries.length > 0
       ? `<p style="margin: 24px 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;"><strong>Your Requirement Summary</strong></p>
-<div style="margin: 0 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; width: 100%; margin: 0 0 12px 0;">
 ${detailRows}
-</div>`
+</table>`
       : "";
 
   return `<!doctype html>
