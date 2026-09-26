@@ -109,15 +109,15 @@ function buildHtmlBody(
   const detailRows = detailEntries
     .map((entry, index) => {
       const isLastRow = index === detailEntries.length - 1;
-      const rowPaddingBottom = isLastRow ? "0" : "4px";
-      return `<div class="rd-row" style="margin: 0;"><span class="rd-label" style="padding-bottom: ${rowPaddingBottom};">&bull; <strong>${escapeHtml(entry.label)}:</strong></span><span class="rd-gap"> </span><span class="rd-value" style="padding-bottom: ${rowPaddingBottom};">${escapeHtml(entry.value)}</span></div>`;
+      const rowMarginBottom = isLastRow ? "0" : "4px";
+      return `<div style="margin: 0 0 ${rowMarginBottom} 0;">&bull; <strong>${escapeHtml(entry.label)}:</strong> ${escapeHtml(entry.value)}</div>`;
     })
     .join("\n");
 
   const detailsSection =
     detailEntries.length > 0
       ? `<p style="margin: 24px 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;"><strong>Your Requirement Summary</strong></p>
-<div class="rd-list" style="margin: 0 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">
+<div style="margin: 0 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">
 ${detailRows}
 </div>`
       : "";
@@ -126,21 +126,6 @@ ${detailRows}
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    .rd-list { display: table !important; width: 100% !important; }
-    .rd-row { display: table-row !important; }
-    .rd-label {
-      display: table-cell !important;
-      white-space: nowrap !important;
-      padding-right: 4px !important;
-      vertical-align: top !important;
-    }
-    .rd-gap { display: none !important; }
-    .rd-value {
-      display: table-cell !important;
-      vertical-align: top !important;
-    }
-  </style>
 </head>
 <body>
 <p style="margin: 0 0 12px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #1a1a1a;">Hi <strong>${escapeHtml(inquiry.name)}</strong>,</p>
