@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
 import type { Route } from "next";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
 import { ProductGrid } from "@/components/catalog/ProductGrid";
+import { ProductGallery } from "@/components/catalog/ProductGallery";
 import { getProductBySlug, getRelatedProducts } from "@/lib/catalog/data";
 import { catalogSlugSchema } from "@/lib/catalog/validations";
 import { safeJsonLd } from "@/lib/seo/jsonLd";
@@ -97,7 +97,6 @@ export default async function ProductDetailPage({
     limit: 4,
   });
 
-  const primaryImage = product.images.find((i) => i.isPrimary) ?? product.images[0];
   const requestQuoteHref = `/contact?product=${encodeURIComponent(product.slug)}` as Route;
 
   const breadcrumbJsonLd = {
@@ -185,34 +184,7 @@ export default async function ProductDetailPage({
 
       <div className="mt-6 grid grid-cols-1 gap-10 lg:grid-cols-2">
         <div>
-          <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-paper-muted">
-            {primaryImage ? (
-              <Image
-                src={primaryImage.url}
-                alt={primaryImage.altText}
-                fill
-                priority
-                sizes="(min-width: 1024px) 50vw, 100vw"
-                className="object-cover"
-              />
-            ) : (
-              <div
-                aria-hidden="true"
-                className="flex h-full w-full items-center justify-center font-body text-sm text-ink-muted"
-              >
-                Image coming soon
-              </div>
-            )}
-          </div>
-          {product.images.length > 1 && (
-            <ul className="mt-3 grid grid-cols-5 gap-2">
-              {product.images.map((image) => (
-                <li key={image.url} className="relative aspect-square overflow-hidden rounded-md bg-paper-muted">
-                  <Image src={image.url} alt={image.altText} fill sizes="20vw" className="object-cover" />
-                </li>
-              ))}
-            </ul>
-          )}
+          <ProductGallery images={product.images} />
         </div>
 
         <div>
