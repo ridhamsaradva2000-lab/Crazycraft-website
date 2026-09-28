@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
 import { ProductGrid } from "@/components/catalog/ProductGrid";
+import { ProductContent } from "@/components/catalog/ProductContent";
 import { ProductGallery } from "@/components/catalog/ProductGallery";
 import { getProductBySlug, getRelatedProducts } from "@/lib/catalog/data";
 import { catalogSlugSchema } from "@/lib/catalog/validations";
@@ -217,7 +218,7 @@ export default async function ProductDetailPage({
             <div className="mt-4 rounded-md bg-accent/10 p-4">
               <p className="font-body text-sm font-medium text-accent-dark">Customization available</p>
               {product.customizationNotes && (
-                <p className="mt-1 font-body text-sm text-ink-muted">{product.customizationNotes}</p>
+                <ProductContent content={product.customizationNotes} variant="compact" />
               )}
             </div>
           )}
@@ -271,7 +272,7 @@ export default async function ProductDetailPage({
       {product.description && (
         <div className="mt-12 max-w-3xl border-t border-paper-muted pt-8">
           <h2 className="font-display text-xl text-brand-900">Product details</h2>
-          <p className="mt-3 whitespace-pre-line font-body text-ink-muted">{product.description}</p>
+          <ProductContent content={product.description} />
         </div>
       )}
 
