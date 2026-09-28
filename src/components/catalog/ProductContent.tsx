@@ -217,7 +217,7 @@ function renderInline(
     nodes.push(
       <strong
         key={`bold-${key++}`}
-        className="font-semibold text-brand-900"
+        className="font-medium text-brand-900"
       >
         {match[1]}
       </strong>
