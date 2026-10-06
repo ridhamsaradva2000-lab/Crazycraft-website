@@ -143,7 +143,7 @@ export default async function HomePage() {
       <section className="border-t border-paper-muted bg-paper-muted py-16">
         <Container>
           <div className="flex items-end justify-between">
-            <h2 className="font-display text-2xl text-brand-900 md:text-3xl">Featured Products</h2>
+            <h2 className="font-display text-2xl text-brand-900 md:text-3xl">Explore Full Artisan Catalog</h2>
             <Link href={"/products" as Route} className="font-body text-sm text-brand-700 hover:underline">
               View all →
             </Link>
