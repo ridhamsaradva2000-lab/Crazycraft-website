@@ -22,7 +22,12 @@ export function ProductFilters({
   const hasActiveFilters = Boolean(currentQuery || currentCategory || currentCollection);
 
   return (
-    <form method="get" action="/products" className="flex flex-wrap items-end gap-3">
+    <form
+      key={JSON.stringify([currentQuery ?? "", currentCategory ?? "", currentCollection ?? ""])}
+      method="get"
+      action="/products"
+      className="flex flex-wrap items-end gap-3"
+    >
       <div className="min-w-[200px] flex-1">
         <label htmlFor="product-search" className="mb-1 block font-body text-xs font-medium text-ink-muted">
           Search products
