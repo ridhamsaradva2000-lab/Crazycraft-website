@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import type { Route } from "next";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
@@ -41,6 +42,61 @@ const BUYER_INDUSTRIES = [
   "Hospitality Buyers",
   "Private-Label Buyers",
 ] as const;
+
+type CategoryCardContent = {
+  image: string;
+  badges: readonly string[];
+  micro: string;
+};
+
+// Presentation-only imagery and copy for the homepage category cards, keyed by the existing
+// category slug. Category order, names and routes always come from getPublishedCategories();
+// a category with no entry here still renders (brand background, title only) and keeps its route.
+const CATEGORY_CARD_CONTENT = new Map<string, CategoryCardContent>([
+  [
+    "bedding-home-textile",
+    {
+      image: "/images/categories/bedding-home-textile.webp",
+      badges: ["EXPORT READY", "CUSTOM ORDERS"],
+      micro: "Bedding \u2022 Home textiles \u2022 Hand block designs",
+    },
+  ],
+  [
+    "handmade-cotton-bag-patchwork-decor",
+    {
+      image: "/images/categories/handmade-cotton-bag-patchwork-decor.webp",
+      badges: ["PRIVATE LABEL", "CUSTOM BRANDING"],
+      micro: "Cotton bags \u2022 Patchwork decor \u2022 Custom orders",
+    },
+  ],
+  [
+    "jaipur-blue-pottery-ceramic",
+    {
+      image: "/images/categories/jaipur-blue-pottery-ceramic.webp",
+      badges: ["BULK ORDERS", "CUSTOM PACKAGING"],
+      micro: "Blue pottery \u2022 Ceramic decor \u2022 Bulk supply",
+    },
+  ],
+  [
+    "resin-wood-serveware",
+    {
+      image: "/images/categories/resin-wood-serveware.webp",
+      badges: ["WHOLESALE READY", "PRIVATE LABEL"],
+      micro: "Resin & wood serveware \u2022 Platters \u2022 Bulk orders",
+    },
+  ],
+  [
+    "wooden-home-accents-gifts",
+    {
+      image: "/images/categories/wooden-home-accents-gifts.webp",
+      badges: ["BULK ORDERS", "GIFT PACKAGING"],
+      micro: "Wooden decor \u2022 Gifts \u2022 Key hangers",
+    },
+  ],
+]);
+
+// Square cards: one column on mobile, two on tablet, three on desktop (the container caps at 1280px).
+const CATEGORY_CARD_IMAGE_SIZES = "(min-width: 1280px) 389px, (min-width: 1024px) 31vw, (min-width: 768px) 48vw, 92vw";
 
 export default async function HomePage() {
   const [{ categories, error: categoriesError }, { products: featuredProducts, error: productsError }] =
@@ -124,16 +180,67 @@ export default async function HomePage() {
               .
             </p>
           ) : (
-            <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-              {categories.slice(0, 8).map((category) => (
-                <Link
-                  key={category.id}
-                  href={`/categories/${category.slug}` as Route}
-                  className="rounded-lg border border-paper-muted bg-white p-6 text-center transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
-                >
-                  <span className="font-display text-base text-brand-900">{category.name}</span>
-                </Link>
-              ))}
+            <div className="mt-6 flex flex-wrap justify-center gap-5 lg:gap-6">
+              {categories.slice(0, 8).map((category) => {
+                const content = CATEGORY_CARD_CONTENT.get(category.slug);
+                return (
+                  <Link
+                    key={category.id}
+                    href={`/categories/${category.slug}` as Route}
+                    className="group relative isolate block aspect-square w-full overflow-hidden rounded-lg bg-brand-900 shadow-sm transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 md:w-[calc(50%_-_0.625rem)] lg:w-[calc(33.333333%_-_1rem)]"
+                  >
+                    {content ? (
+                      <Image
+                        src={content.image}
+                        alt=""
+                        fill
+                        sizes={CATEGORY_CARD_IMAGE_SIZES}
+                        className="object-cover motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-out motion-safe:group-hover:scale-[1.03]"
+                      />
+                    ) : null}
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(18,47,69,0.92)_0%,rgba(18,47,69,0.45)_42%,rgba(18,47,69,0)_72%)]"
+                    />
+                    <div className="absolute inset-x-0 bottom-0 p-4 pr-[4.25rem] sm:p-5 sm:pr-[4.75rem]">
+                      <h3 className="font-display text-xl leading-snug text-white xl:text-2xl">{category.name}</h3>
+                      {content ? (
+                        <p className="mt-1.5 font-body text-xs leading-snug text-white/85 sm:text-[0.8125rem]">
+                          {content.micro}
+                        </p>
+                      ) : null}
+                    </div>
+                    {content ? (
+                      <div className="absolute inset-x-0 top-0 flex flex-wrap justify-end gap-2 p-4 sm:p-5">
+                        {content.badges.map((badge) => (
+                          <span
+                            key={badge}
+                            className="rounded-full bg-brand-900/70 px-2.5 py-1 font-body text-[0.6875rem] font-medium uppercase leading-none tracking-wider text-white ring-1 ring-white/25 backdrop-blur-sm"
+                          >
+                            {badge}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full border border-white/40 bg-white/60 text-brand-900 shadow-lg shadow-black/25 backdrop-blur-sm motion-safe:transition-colors motion-safe:duration-300 group-hover:bg-white/80 group-focus-visible:bg-white/80 sm:bottom-5 sm:right-5 sm:h-11 sm:w-11"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.75"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="h-5 w-5 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:group-hover:-translate-y-0.5 motion-safe:group-hover:translate-x-0.5"
+                      >
+                        <path d="M7 17 17 7M8 7h9v9" />
+                      </svg>
+                    </span>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </Container>
