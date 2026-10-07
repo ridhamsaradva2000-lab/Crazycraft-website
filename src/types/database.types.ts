@@ -1673,6 +1673,21 @@ export type Database = {
         }
         Returns: Json
       }
+      search_products: {
+        Args: {
+          p_category_id?: string
+          p_collection_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_phrase: string
+          p_units: Json
+        }
+        Returns: {
+          product_ids: string[]
+          relevances: number[]
+          total_count: number
+        }[]
+      }
       search_samples: {
         Args: { p_search?: string }
         Returns: {

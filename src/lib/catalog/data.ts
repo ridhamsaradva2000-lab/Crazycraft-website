@@ -1,5 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { buildSearchPlan } from "@/lib/catalog/searchTerms";
+import type { Database } from "@/types/database.types";
 import { cache } from "react";
 import { createPublicCatalogClient } from "@/lib/supabase/public";
 import { logSafeDiagnostic } from "@/lib/diagnostics/safeLog.server";
@@ -172,6 +174,85 @@ export async function getCollectionBySlug(slug: string): Promise<CollectionDetai
   };
 }
 
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+type SearchProductsArgs = Database["public"]["Functions"]["search_products"]["Args"];
+
+type RankedSearchResult = { kind: "ranked"; ids: string[]; totalCount: number };
+type RankedSearchOutcome = RankedSearchResult | { kind: "fallback" };
+
+/**
+ * Runs the ranked multi-field search (public.search_products) for a NON-EMPTY
+ * search text and returns the ids of the requested page in rank order plus the
+ * exact total.
+ *
+ * A search with no usable term (punctuation only, stop words only) and an
+ * out-of-range page are legitimate results, never a reason to fall back. Only
+ * an RPC error, or a response without a result row, returns "fallback" so the
+ * caller can use the original name-only search. The search text itself is
+ * never logged.
+ */
+async function runRankedSearch(
+  supabase: SupabaseServerClient,
+  searchText: string,
+  options: { categoryId: string | null; collectionId: string | null; offset: number; limit: number }
+): Promise<RankedSearchOutcome> {
+  const plan = buildSearchPlan(searchText);
+  if (plan === null) return { kind: "ranked", ids: [], totalCount: 0 };
+
+  const args: SearchProductsArgs = {
+    p_phrase: plan.phrase,
+    p_units: plan.units as unknown as SearchProductsArgs["p_units"],
+    p_limit: options.limit,
+    p_offset: options.offset,
+    ...(options.categoryId ? { p_category_id: options.categoryId } : {}),
+    ...(options.collectionId ? { p_collection_id: options.collectionId } : {}),
+  };
+
+  const { data, error } = await supabase.rpc("search_products", args);
+  if (error) {
+    console.error("search_products failed:", error.code);
+    return { kind: "fallback" };
+  }
+
+  const row = Array.isArray(data) ? data[0] : undefined;
+  if (row === undefined || !Array.isArray(row.product_ids)) {
+    console.error("search_products returned no result row");
+    return { kind: "fallback" };
+  }
+  return { kind: "ranked", ids: row.product_ids, totalCount: Number(row.total_count) };
+}
+
+/**
+ * Loads the normal list rows for the ranked ids of one page (same columns and
+ * the same published filter as the regular list query) and puts them back in
+ * the RPC's rank order. The shape mirrors the list query's result so the
+ * existing mapping and primary-image loading below stay untouched.
+ */
+async function hydrateRankedProducts(supabase: SupabaseServerClient, ids: string[], totalCount: number) {
+  if (ids.length === 0) {
+    const empty: unknown[] = [];
+    return { data: empty, error: null, count: totalCount };
+  }
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_LIST_COLUMNS)
+    .eq("status", "published")
+    .in("id", ids);
+  if (error) return { data: null, error, count: null };
+
+  const rowsById = new Map<string, unknown>();
+  for (const row of data ?? []) {
+    rowsById.set((row as unknown as { id: string }).id, row);
+  }
+  const ordered: unknown[] = [];
+  for (const id of ids) {
+    const row = rowsById.get(id);
+    if (row !== undefined) ordered.push(row);
+  }
+  return { data: ordered, error: null, count: totalCount };
+}
+
 export interface ProductListItem {
   id: string;
   slug: string;
@@ -233,6 +314,22 @@ export async function getProducts(params: {
   const from = (params.page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
+  // Ranked multi-field search (public.search_products). Only a non-empty search
+  // takes this path; an empty search keeps the original list query untouched.
+  // A legitimate zero or out-of-range result is a normal result. Only an RPC
+  // error or a missing row falls back to the original name-only search below.
+  let rankedSearch: RankedSearchResult | null = null;
+  const searchText = params.search === undefined ? "" : params.search.trim();
+  if (searchText !== "") {
+    const outcome = await runRankedSearch(supabase, searchText, {
+      categoryId,
+      collectionId,
+      offset: from,
+      limit: PAGE_SIZE,
+    });
+    if (outcome.kind === "ranked") rankedSearch = outcome;
+  }
+
   let query = supabase
     .from("products")
     .select(
@@ -254,7 +351,9 @@ export async function getProducts(params: {
     query = query.eq("product_collections.collection_id", collectionId);
   }
 
-  const { data, error, count } = await query;
+  const { data, error, count } = rankedSearch
+    ? await hydrateRankedProducts(supabase, rankedSearch.ids, rankedSearch.totalCount)
+    : await query;
 
   if (error) {
     console.error("getProducts failed:", error.code);
