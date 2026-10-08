@@ -71,7 +71,8 @@ export default async function CollectionDetailPage({
 
   const rawSearchParams = await searchParams;
   const parsedPage = pageParamSchema.safeParse(rawSearchParams.page);
-  const page = parsedPage.success ? parsedPage.data : 1;
+  if (!parsedPage.success) notFound();
+  const page = parsedPage.data;
 
   const result = await getProducts({ collectionSlug: collection.slug, page });
   const totalPages = Math.max(1, Math.ceil(result.totalCount / PAGE_SIZE));

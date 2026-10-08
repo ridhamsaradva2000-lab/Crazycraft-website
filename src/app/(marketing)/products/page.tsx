@@ -46,6 +46,11 @@ export default async function ProductsPage({
   const rawParams = await searchParams;
   const parsed = productsQuerySchema.safeParse(rawParams);
 
+  // A malformed or out-of-range page number can never be a real page: true 404. Any non-page validation issue keeps the inline error below.
+  if (!parsed.success && parsed.error.issues.every((issue) => issue.path[0] === "page")) {
+    notFound();
+  }
+
   const [categoriesResult, collectionsResult] = await Promise.all([
     getPublishedCategories(),
     getPublishedCollections(),

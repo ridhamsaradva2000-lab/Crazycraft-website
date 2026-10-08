@@ -356,6 +356,12 @@ export async function getProducts(params: {
     : await query;
 
   if (error) {
+    // PostgREST answers 416 / PGRST103 ("Requested range not satisfiable") when a valid page number lies beyond
+    // the last page: an ordinary empty result, never an outage. The pages turn it into a true 404 through their
+    // existing out-of-range guard. Every other error stays an operational error.
+    if (error.code === "PGRST103") {
+      return { products: [], totalCount: 0, error: false };
+    }
     console.error("getProducts failed:", error.code);
     return { products: [], totalCount: 0, error: true };
   }
