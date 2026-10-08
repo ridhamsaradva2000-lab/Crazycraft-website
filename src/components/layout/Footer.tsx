@@ -97,7 +97,7 @@ export async function Footer() {
           <div className="max-w-xl">
             <h2 className="font-display text-sm font-medium text-brand-900">Newsletter</h2>
             <p className="mt-2 font-body text-sm text-ink-muted">
-              Get CrazyCraft product updates and sourcing news by email.
+              Get CrazyCraft Global product updates and sourcing news by email.
             </p>
             <div className="mt-4">
               <NewsletterSignupForm source="footer" />

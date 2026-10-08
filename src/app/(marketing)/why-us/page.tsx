@@ -7,7 +7,14 @@ import { clientEnv } from "@/lib/env.client";
 
 export const metadata: Metadata = {
   title: "Why Us",
-  description: "Why B2B buyers choose Crazycraft for sourcing Indian handicrafts.",
+  description: "Why global B2B buyers choose CrazyCraft Global for clear specifications, MOQ-based ordering, customization and export coordination.",
+  openGraph: {
+    type: "website",
+    siteName: "CrazyCraft Global",
+    title: "Why Us | CrazyCraft Global",
+    description: "Why global B2B buyers choose CrazyCraft Global for clear specifications, MOQ-based ordering, customization and export coordination.",
+    images: [{ url: "/opengraph-image.png", width: 1200, height: 630, alt: "CrazyCraft Global: Indian Handicrafts for Wholesale and Export" }],
+  },
   alternates: { canonical: `${clientEnv.NEXT_PUBLIC_SITE_URL}/why-us` },
 };
 
@@ -48,7 +55,7 @@ export default function WhyUsPage() {
   return (
     <Container className="py-16">
       <div className="mx-auto max-w-3xl">
-        <h1 className="font-display text-3xl text-brand-900 md:text-4xl">Why Buyers Choose Crazycraft</h1>
+        <h1 className="font-display text-3xl text-brand-900 md:text-4xl">Why Buyers Choose CrazyCraft Global</h1>
         <p className="mt-4 font-body text-lg text-ink-muted">
           A straightforward sourcing process, built around what B2B buyers actually need to plan an
           order.

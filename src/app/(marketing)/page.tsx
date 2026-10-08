@@ -11,7 +11,14 @@ import { clientEnv } from "@/lib/env.client";
 import { SITE_NAME, SITE_DESCRIPTION } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: { absolute: "Crazycraft | B2B Handicraft Exporter from India" },
+  title: { absolute: "CrazyCraft Global | B2B Handicraft Exporter from India" },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: "CrazyCraft Global | B2B Handicraft Exporter from India",
+    description: SITE_DESCRIPTION,
+    images: [{ url: "/opengraph-image.png", width: 1200, height: 630, alt: "CrazyCraft Global: Indian Handicrafts for Wholesale and Export" }],
+  },
   description: SITE_DESCRIPTION,
   alternates: { canonical: clientEnv.NEXT_PUBLIC_SITE_URL },
 };
@@ -105,7 +112,8 @@ export default async function HomePage() {
   const organizationJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "Crazycraft",
+    name: SITE_NAME,
+    alternateName: "CrazyCraft",
     url: clientEnv.NEXT_PUBLIC_SITE_URL,
     description: SITE_DESCRIPTION,
   };
@@ -114,6 +122,7 @@ export default async function HomePage() {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: SITE_NAME,
+    alternateName: "CrazyCraft",
     url: clientEnv.NEXT_PUBLIC_SITE_URL,
   };
 
@@ -130,7 +139,7 @@ export default async function HomePage() {
             Indian Handicrafts, Sourced for Export
           </h1>
           <p className="mx-auto mt-5 max-w-2xl font-body text-lg text-ink-muted">
-            Crazycraft connects importers, wholesalers, and retail buyers with Blue Pottery, wooden
+            CrazyCraft Global connects importers, wholesalers, and retail buyers with Blue Pottery, wooden
             handicrafts, tote bags, bedding sets, and home decor — ready for bulk and private-label
             orders.
           </p>
@@ -276,7 +285,7 @@ export default async function HomePage() {
       <section className="py-16">
         <Container>
           <h2 className="font-display text-2xl text-brand-900 md:text-3xl">
-            Why Buyers Work With Crazycraft
+            Why Buyers Work With CrazyCraft Global
           </h2>
           <div className="mt-8 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
             <WhyItem
@@ -361,7 +370,7 @@ export default async function HomePage() {
       {/* 9. Final quote CTA */}
       <section className="bg-brand-900 py-16">
         <Container className="text-center">
-          <h2 className="font-display text-2xl text-white md:text-3xl">Ready to source with Crazycraft?</h2>
+          <h2 className="font-display text-2xl text-white md:text-3xl">Ready to source with CrazyCraft Global?</h2>
           <p className="mx-auto mt-3 max-w-xl font-body text-brand-100">
             Tell us what you&apos;re looking for and we&apos;ll get back to you with MOQ, lead time, and
             customization options.

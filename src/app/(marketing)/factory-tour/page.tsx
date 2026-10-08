@@ -7,7 +7,14 @@ import { clientEnv } from "@/lib/env.client";
 
 export const metadata: Metadata = {
   title: "Production Visits",
-  description: "Production and artisan-workshop visit coordination for Crazycraft buyers.",
+  description: "Learn about production and artisan-workshop visit coordination available to CrazyCraft Global buyers, subject to availability.",
+  openGraph: {
+    type: "website",
+    siteName: "CrazyCraft Global",
+    title: "Production Visits | CrazyCraft Global",
+    description: "Learn about production and artisan-workshop visit coordination available to CrazyCraft Global buyers, subject to availability.",
+    images: [{ url: "/opengraph-image.png", width: 1200, height: 630, alt: "CrazyCraft Global: Indian Handicrafts for Wholesale and Export" }],
+  },
   alternates: { canonical: `${clientEnv.NEXT_PUBLIC_SITE_URL}/factory-tour` },
 };
 

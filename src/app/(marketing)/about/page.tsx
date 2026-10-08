@@ -8,7 +8,14 @@ import { clientEnv } from "@/lib/env.client";
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Crazycraft is a B2B exporter of Indian handicrafts for importers, wholesalers, distributors, and retail buyers worldwide.",
+    "Learn how CrazyCraft Global connects importers, wholesalers and retailers with Indian handicrafts for international B2B sourcing.",
+  openGraph: {
+    type: "website",
+    siteName: "CrazyCraft Global",
+    title: "About | CrazyCraft Global",
+    description: "Learn how CrazyCraft Global connects importers, wholesalers and retailers with Indian handicrafts for international B2B sourcing.",
+    images: [{ url: "/opengraph-image.png", width: 1200, height: 630, alt: "CrazyCraft Global: Indian Handicrafts for Wholesale and Export" }],
+  },
   alternates: { canonical: `${clientEnv.NEXT_PUBLIC_SITE_URL}/about` },
 };
 
@@ -16,9 +23,9 @@ export default function AboutPage() {
   return (
     <Container className="py-16">
       <div className="mx-auto max-w-3xl">
-        <h1 className="font-display text-3xl text-brand-900 md:text-4xl">About Crazycraft</h1>
+        <h1 className="font-display text-3xl text-brand-900 md:text-4xl">About CrazyCraft Global</h1>
         <p className="mt-4 font-body text-lg text-ink-muted">
-          Crazycraft is a B2B exporter connecting buyers with Indian handicrafts — Blue Pottery,
+          CrazyCraft Global is a B2B exporter connecting buyers with Indian handicrafts — Blue Pottery,
           wooden handicrafts, tote bags, bedding sets, and home decor.
         </p>
 

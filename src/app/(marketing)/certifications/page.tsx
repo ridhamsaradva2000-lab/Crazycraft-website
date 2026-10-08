@@ -7,7 +7,14 @@ import { clientEnv } from "@/lib/env.client";
 
 export const metadata: Metadata = {
   title: "Certifications & Documentation",
-  description: "Compliance, product, and export documentation availability for Crazycraft orders.",
+  description: "Review compliance, product and export documentation that may be available for CrazyCraft Global orders, depending on product and destination.",
+  openGraph: {
+    type: "website",
+    siteName: "CrazyCraft Global",
+    title: "Certifications & Documentation | CrazyCraft Global",
+    description: "Review compliance, product and export documentation that may be available for CrazyCraft Global orders, depending on product and destination.",
+    images: [{ url: "/opengraph-image.png", width: 1200, height: 630, alt: "CrazyCraft Global: Indian Handicrafts for Wholesale and Export" }],
+  },
   alternates: { canonical: `${clientEnv.NEXT_PUBLIC_SITE_URL}/certifications` },
 };
 

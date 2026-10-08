@@ -8,7 +8,14 @@ import { clientEnv } from "@/lib/env.client";
 export const metadata: Metadata = {
   title: "Privacy & Cookies",
   description:
-    "How Crazycraft uses cookies, including the essential cookie that remembers your consent choice, and how marketing measurement (Meta Pixel) is used when accepted.",
+    "Learn how CrazyCraft Global uses cookies, essential consent storage and marketing measurement, and how your privacy choices are handled.",
+  openGraph: {
+    type: "website",
+    siteName: "CrazyCraft Global",
+    title: "Privacy & Cookies | CrazyCraft Global",
+    description: "Learn how CrazyCraft Global uses cookies, essential consent storage and marketing measurement, and how your privacy choices are handled.",
+    images: [{ url: "/opengraph-image.png", width: 1200, height: 630, alt: "CrazyCraft Global: Indian Handicrafts for Wholesale and Export" }],
+  },
   alternates: { canonical: `${clientEnv.NEXT_PUBLIC_SITE_URL}/privacy` },
 };
 

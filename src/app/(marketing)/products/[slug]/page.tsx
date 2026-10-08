@@ -49,22 +49,22 @@ export async function generateMetadata({
 
   // product.metaTitle (when present) is a database-managed field intended
   // as the COMPLETE title — using the root layout's template on it would
-  // double-brand it ("Product Name | Crazycraft | Crazycraft" if the
+  // double-brand it ("Product Name | CrazyCraft Global | CrazyCraft Global" if the
   // stored value already includes the brand, or an unwanted suffix if it
   // doesn't). `{ absolute }` bypasses the template entirely for that
   // case. The name-only fallback is deliberately template-compatible
-  // (unbranded) instead, letting the root template append "| Crazycraft"
+  // (unbranded) instead, letting the root template append "| CrazyCraft Global"
   // exactly once.
   const title = product.metaTitle ? { absolute: product.metaTitle } : product.name;
   // Open Graph's own title field is never subject to the root template
   // at all (Next.js only templates the page <title>), so it needs its
   // own complete, standalone string regardless of which branch above was
   // used.
-  const ogTitle = product.metaTitle || `${product.name} | Crazycraft`;
+  const ogTitle = product.metaTitle || `${product.name} | CrazyCraft Global`;
   const description =
     product.metaDescription ||
     product.shortDescription ||
-    `${product.name} — export-ready, MOQ ${product.moq}, available for bulk and private-label orders from Crazycraft.`;
+    `${product.name} — export-ready, MOQ ${product.moq}, available for bulk and private-label orders from CrazyCraft Global.`;
   const canonical = `${clientEnv.NEXT_PUBLIC_SITE_URL}/products/${product.slug}`;
   const primaryImage = product.images.find((i) => i.isPrimary) ?? product.images[0];
 

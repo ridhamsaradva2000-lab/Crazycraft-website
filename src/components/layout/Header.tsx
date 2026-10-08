@@ -3,7 +3,7 @@ import type { Route } from "next";
 import { Container } from "@/components/ui/Container";
 import { MobileMenu } from "@/components/layout/MobileMenu";
 import { ProductDropdown } from "@/components/layout/ProductDropdown";
-import { NAV_LINKS, SITE_NAME } from "@/lib/constants";
+import { NAV_LINKS, SITE_WORDMARK } from "@/lib/constants";
 import { getPublishedCategories } from "@/lib/catalog/data";
 import { getBuyerProfile } from "@/lib/auth/session";
 
@@ -28,7 +28,7 @@ export async function Header() {
     <header className="sticky top-0 z-50 border-b border-paper-muted bg-paper/95">
       <Container className="flex h-16 items-center justify-between">
         <Link href={"/" as Route} className="font-display text-xl text-brand-900">
-          {SITE_NAME}
+          {SITE_WORDMARK}
         </Link>
 
         <nav aria-label="Main navigation" className="hidden items-center gap-1 md:flex">

@@ -49,10 +49,19 @@ export async function generateMetadata({
   const page = parsedPage.success ? parsedPage.data : 1;
   const canonical = `${clientEnv.NEXT_PUBLIC_SITE_URL}/categories/${category.slug}${page > 1 ? `?page=${page}` : ""}`;
 
+  const pageTitle = page > 1 ? `${title} \u2014 Page ${page}` : title;
+
   return {
-    title,
+    title: pageTitle,
     description,
     alternates: { canonical },
+    openGraph: {
+      type: "website",
+      siteName: "CrazyCraft Global",
+      title: `${pageTitle} | CrazyCraft Global`,
+      description,
+      images: [{ url: "/opengraph-image.png", width: 1200, height: 630, alt: "CrazyCraft Global: Indian Handicrafts for Wholesale and Export" }],
+    },
   };
 }
 

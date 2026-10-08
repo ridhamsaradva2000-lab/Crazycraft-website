@@ -9,7 +9,14 @@ import { clientEnv } from "@/lib/env.client";
 export const metadata: Metadata = {
   title: "Contact Us",
   description:
-    "Get in touch with Crazycraft's export team — importers, wholesalers, retail chains, distributors, interior designers, and hotel buyers welcome.",
+    "Contact CrazyCraft Global for Indian handicraft wholesale enquiries, bulk orders, customization, private label and export sourcing.",
+  openGraph: {
+    type: "website",
+    siteName: "CrazyCraft Global",
+    title: "Contact Us | CrazyCraft Global",
+    description: "Contact CrazyCraft Global for Indian handicraft wholesale enquiries, bulk orders, customization, private label and export sourcing.",
+    images: [{ url: "/opengraph-image.png", width: 1200, height: 630, alt: "CrazyCraft Global: Indian Handicrafts for Wholesale and Export" }],
+  },
   alternates: {
     canonical: `${clientEnv.NEXT_PUBLIC_SITE_URL}/contact`,
   },

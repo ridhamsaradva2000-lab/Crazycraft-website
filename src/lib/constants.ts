@@ -1,6 +1,8 @@
-export const SITE_NAME = "Crazycraft";
+export const SITE_NAME = "CrazyCraft Global";
+// Visual wordmark text shown in the site header. The logo wordmark stays "Crazycraft"; SITE_NAME is the SEO and public text brand.
+export const SITE_WORDMARK = "Crazycraft";
 export const SITE_DESCRIPTION =
-  "Crazycraft is a B2B exporter of Indian handicrafts — Blue Pottery, wooden handicrafts, tote bags, bedding sets, and home decor — for importers, wholesalers, retail chains, distributors, interior designers, and hotel buyers.";
+  "Source Indian handicrafts for wholesale and export from CrazyCraft Global, including Blue Pottery, wooden decor, textiles, bags and homeware.";
 
 export const NAV_LINKS = [
   { label: "Products", href: "/products" },

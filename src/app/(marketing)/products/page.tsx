@@ -28,12 +28,21 @@ export async function generateMetadata({
   const isFilteredOrSearch = parsed.success
     ? Boolean(parsed.data.q || parsed.data.category || parsed.data.collection)
     : true;
+  const pageNumber = parsed.success ? parsed.data.page : 1;
+  const pageTitle = pageNumber > 1 ? `Handicraft Products for Export \u2014 Page ${pageNumber}` : "Handicraft Products for Export";
+  const description = "Browse CrazyCraft Global's Indian handicraft catalogue for wholesale and export, with bulk ordering, customization and private-label options.";
 
   return {
-    title: "Handicraft Products for Export",
-    description:
-      "Browse Crazycraft's B2B handicraft export catalogue — Blue Pottery, wooden handicrafts, tote bags, bedding sets, and home decor, available for bulk and private-label orders.",
+    title: pageTitle,
+    description,
     alternates: { canonical },
+    openGraph: {
+      type: "website",
+      siteName: "CrazyCraft Global",
+      title: `${pageTitle} | CrazyCraft Global`,
+      description,
+      images: [{ url: "/opengraph-image.png", width: 1200, height: 630, alt: "CrazyCraft Global: Indian Handicrafts for Wholesale and Export" }],
+    },
     ...(isFilteredOrSearch ? { robots: { index: false, follow: true } } : {}),
   };
 }
